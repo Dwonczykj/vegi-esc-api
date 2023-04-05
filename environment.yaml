@@ -1,0 +1,26 @@
+name: word2vec
+channels:
+  - defaults
+  - conda-forge
+  - anaconda
+dependencies:
+  - pot
+  - numpy
+  - nltk
+  - gensim
+  - flask
+  - paramiko
+  - boto3
+  - ipython
+  - icecream
+  - pymysql
+  - yaml
+  - pyyaml
+  - future
+  - autopep8
+  - aiohttp
+  - python-dotenv
+  - cachetools
+  - dataclasses
+  - jsons
+prefix: /opt/homebrew/Caskroom/miniconda/base/envs/word2vec

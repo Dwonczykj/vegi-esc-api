@@ -8,11 +8,11 @@
             "name": "Python word2vec-api (5002)",
             "type": "python",
             "request": "launch",
-            "program": "word2vec-api",
+            "program": "word2vec-api.py",
             "args": [
-                "run",
-                "--no-debugger",
-                "--no-reload",
+                // "run",
+                // "--no-debugger",
+                // "--no-reload",
                 "--model",
                 "./models/GoogleNews-vectors-negative300.bin",
                 "--binary",
@@ -24,6 +24,14 @@
                 "--port",
                 "5002"
             ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true
         },

@@ -2,12 +2,18 @@ word2vec-api
 ============
 
 Simple web service providing a word embedding API. The methods are based on Gensim Word2Vec implementation. Models are passed as parameters and must be in the Word2Vec text or binary format. Updated to run on Python 3.
-* Install Dependencies [venvs in pip](https://www.notion.so/gember/Python-Cheats-8d7b0cc6f58544ef888ea36bb5879141?pvs=4#03585a911a79487db4004f0f8640b9c6)
+# Install Dependencies 
+## Using conda 
+```
+conda env create --file environment.yaml
+```
+## Using pip 
+* See Notion Docs -> [venvs in pip](https://www.notion.so/gember/Python-Cheats-8d7b0cc6f58544ef888ea36bb5879141?pvs=4#03585a911a79487db4004f0f8640b9c6)
 ```
 pip install -r requirements.txt
 ```
 
-* Launching the service
+# Launching the service
 ```
 python word2vec-api --model path/to/the/model [--host host --port 1234]
 ```
@@ -18,18 +24,20 @@ python word2vec-api.py --model /path/to/GoogleNews-vectors-negative300.bin --bin
 
 
 
-* Example calls
+## Example calls
 ```
-curl http://127.0.0.1:5000/word2vec/n_similarity?ws1=Sushi&ws1=Shop&ws2=Japanese&ws2=Restaurant
-curl http://127.0.0.1:5000/word2vec/similarity?w1=Sushi&w2=Japanese
-curl http://127.0.0.1:5000/word2vec/most_similar?positive=indian&positive=food[&negative=][&topn=]
-curl http://127.0.0.1:5000/word2vec/model?word=restaurant
-curl http://127.0.0.1:5000/word2vec/model_word_set
+curl http://127.0.0.1:5000/n_similarity?ws1=Sushi&ws1=Shop&ws2=Japanese&ws2=Restaurant
+curl http://127.0.0.1:5000/similarity?w1=Sushi&w2=Japanese
+curl http://127.0.0.1:5000/most_similar?positive=indian&positive=food[&negative=][&topn=]
+curl http://127.0.0.1:5000/model?word=restaurant
+curl http://127.0.0.1:5000/model_word_set
 ```
 
 Note: The "model" method returns a base64 encoding of the vector. "model\_word\_set" returns a base64 encoded pickle of the model's vocabulary. 
 
 ## Where to get a pretrained model
+
+See pretrained models [here](https://radimrehurek.com/gensim/models/word2vec.html#pretrained-models)
 
 In case you do not have domain specific data to train, it can be convenient to use a pretrained model. 
 Please feel free to submit additions to this list through a pull request.
@@ -54,3 +62,22 @@ Please feel free to submit additions to this list through a pull request.
 | [DBPedia vectors (wiki2vec)](https://github.com/idio/wiki2vec/raw/master/torrents/enwiki-gensim-word2vec-1000-nostem-10cbow.torrent) | 1000 | Wikipedia (?) | ? | Idio | word2vec | word2vec, skip-gram | BoW, 10 | [link](https://github.com/idio/wiki2vec#prebuilt-models) |
 | [60 Wikipedia embeddings with 4 kinds of context](http://vsmlib.readthedocs.io/en/latest/tutorial/getting_vectors.html#) | 25,50,100,250,500 | Wikipedia | varies | Li, Liu et al. | Skip-Gram, CBOW, GloVe | original and modified | 2 | [link](http://vsmlib.readthedocs.io/en/latest/tutorial/getting_vectors.html#) |
 | [German Wikipedia+News](http://cloud.devmount.de/d2bc5672c523b086/german.model) | 300 | Wikipedia + Statmt News 2013 (1.1B) | 608.130 | Andreas Müller | word2vec | Skip-Gram | 5 | [link](https://devmount.github.io/GermanWordEmbeddings/)
+
+
+# Deploying to Heroku
+
+## Procfile
+
+We create a Procfile to tell heroku how to host the flask application.
+
+We use gunicorn to manage creating the instance of flask
+
+We have the file containing the root function for our flask app in `word2vec-api.py`
+
+This is reflected with a Procfile as so:
+```
+web: gunicorn word2vec-api:app
+```
+
+See a how to [here](https://evancalz.medium.com/deploying-your-flask-app-to-heroku-43660a761f1c)
+

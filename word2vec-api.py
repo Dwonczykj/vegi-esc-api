@@ -6,31 +6,138 @@ Example call: curl http://127.0.0.1:5000/word2vec/n_similarity?ws1=sushi&ws1=sho
 @TODO: Add command line parameters: host and port
 '''
 from __future__ import print_function
-from logger import LOG_LEVEL, LogLevel
+from dataclasses import dataclass
+from gensim import utils, matutils
+from numpy import exp, dot, zeros, outer, random, dtype, get_include, float32 as REAL,\
+    uint32, seterr, array, uint8, vstack, argsort, fromstring, sqrt, newaxis, ndarray, empty, sum as np_sum
+import pickle
+import base64
+import argparse
+from protocols import DataClassJsonWrapped, ESCRatingExplained, ESCRatingExplainedResult
+from sustained_mapper import SustainedVegiMapper
+from vegi_repo import SSHRepo
+import yaml
+from logger import info
+from logger import set_log_level, LogLevel
 # import gensim.models.keyedvectors as word2vec
 from gensim import models
 
 from future import standard_library
 standard_library.install_aliases()
 from builtins import str
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from flask import Flask, redirect, url_for, request
 import logger
 import os
 import json
+import requests
+from sustained import SustainedAPI, SustainedProductBase
+from wmd import example
 
-LOG_LEVEL = LogLevel.info
+set_log_level(LogLevel.verbose)
 
-# from flask_restful import Resource, Api, reqparse
-from gensim import utils, matutils
-from numpy import exp, dot, zeros, outer, random, dtype, get_include, float32 as REAL,\
-     uint32, seterr, array, uint8, vstack, argsort, fromstring, sqrt, newaxis, ndarray, empty, sum as np_sum
-import pickle
-import argparse
-import base64
 
+VEGI_SERVER_P_KEY_FILE: str = ''
+VEGI_SERVER_PUBLIC_HOSTNAME = ''
+VEGI_SERVER_PUBLIC_IP_ADDRESS = ''
+VEGI_SERVER_PRIVATE_IP_ADDRESS = ''
+VEGI_SERVER_USERNAME = ''
+SSH_ARGS = ''
+SQL_USER = ''
+SQL_PASSWORD = ''
+SQL_DB_NAME = ''
+with open('hosts.yml') as f:
+    hostKVPs = yaml.load(f, Loader=yaml.FullLoader)
+    config = hostKVPs['all']['hosts']['vegi-backend-qa']
+    VEGI_SERVER_IP_ADDRESS = config['ansible_ssh_host']
+    VEGI_SERVER_PRIVATE_IP_ADDRESS = config['ansible_ssh_private_ip']
+    VEGI_SERVER_PUBLIC_HOSTNAME = 'ec2-'+config['ansible_ssh_host'].replace(
+        '.', '-')+'.compute-1.amazonaws.com'  # ec2-54-221-0-234.compute-1.amazonaws.com
+    VEGI_SERVER_USERNAME = config['ansible_user']
+    # VEGI_SERVER_P_KEY_FILE = config['ansible_ssh_private_key_file'].replace('~', '/Users/joey')
+    VEGI_SERVER_P_KEY_FILE = os.path.expanduser(
+        config['ansible_ssh_private_key_file'])
+    SSH_ARGS = config['ansible_ssh_extra_args']
+    SQL_USER = config['mysql_production_user']
+    SQL_PASSWORD = config['mysql_production_password']
+    SQL_DB_NAME = config['mysql_production_database']
 
 app = Flask(__name__)
+
+@app.route('/login', methods=['POST', 'GET'])
+def login():
+    if request.method == 'POST':
+        user = request.form['nm']
+        return redirect(url_for('success', name=user))
+    else:
+        user = request.args.get('nm')
+        return redirect(url_for('success', name=user))
+
+
+@app.route('/product/<id>')
+def product(id: int):
+    product = None
+    with SSHRepo(
+        # server_hostname=VEGI_SERVER_PRIVATE_IP_ADDRESS,
+        server_hostname=VEGI_SERVER_PUBLIC_HOSTNAME,
+        ssh_user=VEGI_SERVER_USERNAME,
+        ssh_pkey=VEGI_SERVER_P_KEY_FILE,
+        db_hostname='localhost',
+        db_host_inbound_port='3306',
+        db_username=SQL_USER,
+        db_password=SQL_PASSWORD,
+        db_name=SQL_DB_NAME,
+    ) as repoConn:
+        repoConn._connect_ssh()
+        product = repoConn.get_product_to_rate(id)
+
+    return json.dumps(product)
+
+
+@app.route('/rate-product/<id>')
+def rate_product(id: int):
+    with SSHRepo(
+        # server_hostname=VEGI_SERVER_PRIVATE_IP_ADDRESS,
+        server_hostname=VEGI_SERVER_PUBLIC_HOSTNAME,
+        ssh_user=VEGI_SERVER_USERNAME,
+        ssh_pkey=VEGI_SERVER_P_KEY_FILE,
+        db_hostname='localhost',
+        db_host_inbound_port='3306',
+        db_username=SQL_USER,
+        db_password=SQL_PASSWORD,
+        db_name=SQL_DB_NAME,
+    ) as repoConn:
+        repoConn._connect_ssh()
+        product = repoConn.get_product_to_rate(id)
+        rating_explanations = repoConn.get_product_ratings(id)
+        print(rating_explanations)
+        # todo: choose the product rating if exists that closest matches a category from sustained
+        rating = {
+            'rating': 5 if str(product['name']).upper().startswith('A') else 0,
+            'explanation': 'product starts with an A'
+        }
+
+    return json.dumps(rating)
+
+
+@app.route('/users')
+def users():
+    users = []
+    with SSHRepo(
+        # server_hostname=VEGI_SERVER_PRIVATE_IP_ADDRESS,
+        server_hostname=VEGI_SERVER_PUBLIC_HOSTNAME,
+        ssh_user=VEGI_SERVER_USERNAME,
+        ssh_pkey=VEGI_SERVER_P_KEY_FILE,
+        db_hostname='localhost',
+        db_host_inbound_port='3306',
+        db_username=SQL_USER,
+        db_password=SQL_PASSWORD,
+        db_name=SQL_DB_NAME,
+    ) as repoConn:
+        repoConn._connect_ssh()
+        users = repoConn.read_all_records_from_users()
+
+    return json.dumps(users)
 
 
 def filter_words(words):
@@ -45,15 +152,17 @@ def filter_words(words):
 
 
 @app.route('/success/<name>')
-def success(name):
+def success(name:str):
     return 'welcome %s' % name
-
 
 @app.route('/n_similarity')
 def n_similarity():
     args = request.args
     print(args)
-    result = model.n_similarity(filter_words([args['ws1']]),filter_words([args['ws2']])).item()
+    result = model.n_similarity(
+        filter_words(args['ws1']), 
+        filter_words(args['ws2'])
+        ).item()
     print(result)
     return f"Success: {result}"
 
@@ -66,6 +175,101 @@ def similarity():
     result = model.similarity(args['w1'], args['w2']).item()
     print(result)
     return f"Success: {result}"
+
+
+@app.route('/sentence_similarity')
+def sentence_similarity():
+    if (norm == "disable"):
+        return ("most_similar disabled", 400)
+    args = request.args
+    result = model.wmdistance(args['s1'], args['s2']) # see wmd.py for use (compare sentence1 and sentence2)
+    print(result)
+    return f"Success: {result}"
+
+
+@app.route('/sustained/refresh')
+def sustained_refresh():
+    ss = SustainedAPI()
+    ss.refresh_products_lists()
+    return 'Success'
+    
+def _sustained_most_similar_category_id_spaced(sentence1:str):
+    ss = SustainedAPI()    
+    sustained_categories = ss.get_category_ids(replace=('-',' '))
+    similarities = dict()
+    for category_id_spaced in sustained_categories:
+        similarities[category_id_spaced] = model.wmdistance(
+            category_id_spaced, sentence1
+        )
+        print(f"'{category_id_spaced}': {similarities[category_id_spaced]}")
+    print(similarities)
+    min_v = min([v for v in similarities.values()])
+    most_similar = next((k for k, v in similarities.items() if v == min_v))
+    return f"{most_similar}"
+    
+@app.route('/sustained/most-similar-category')
+def sustained_most_similar_category():
+    args = request.args
+    print(args)
+    most_sim_cat_id = _sustained_most_similar_category_id_spaced(args['s1'])
+    ss = SustainedAPI()
+    cat = ss.get_cat_for_space_delimited_id(most_sim_cat_id, replace=('-',' '))
+    if cat:
+        return cat['name']
+    raise Exception('Category not found')
+
+
+def _sustained_product_to_vegi_esc_rating(sProd:SustainedProductBase):
+    svm = SustainedVegiMapper()
+    return svm.getProductRatingWithExplanations(sourceProductId=sProd.id)
+
+def _sustained_most_similar_product(sentence1: str):
+    most_sim_cat_id = _sustained_most_similar_category_id_spaced(sentence1)
+    ss = SustainedAPI()
+    cat = ss.get_cat_for_space_delimited_id(most_sim_cat_id, replace=('-', ' '))
+    if not cat:
+        raise Exception('Category not found')
+    sustained_products = ss.get_products(category_name=cat['name'])
+    similarities = dict()
+    for product in sustained_products:
+        product_name = product.name
+        similarities[product_name] = model.wmdistance(
+            product_name, 
+            sentence1
+        )
+        print(f"'{product_name}': {similarities[product_name]}")
+    min_v = min([v for v in similarities.values()])
+    most_similar = next((k for k, v in similarities.items() if v == min_v))
+    products_with_matching_name = [p for p in sustained_products if p.name.lower() == most_similar.lower()]
+    assert products_with_matching_name, "Products_with_matching_name somehow lost product name - Should never happen"
+    most_similar_product = products_with_matching_name[0]
+    vegiRating = _sustained_product_to_vegi_esc_rating(sProd=most_similar_product)
+    # adjust rating for wmdistance away if < 0.5 keep same as v similar product if > 1.2, v different products and reduce rating by 50%
+    if min_v <= 0.6:
+        pass # no adjustment needed as fairly close match
+    elif min_v >= 1.2:
+        vegiRating.rating.rating *= 0.5
+    else:
+        # min_v = 0.6 -> 0.5 -> 1
+        # min_v = 1.2 -> 0 -> 0.5
+        vegiRating.rating.rating *= (((1.2 - min_v)/(1.2 - 0.6)) * 0.5) + 0.5
+    
+    return ESCRatingExplainedResult(
+        rating=vegiRating.rating,
+        explanations=vegiRating.explanations,
+        original_search_term=sentence1,
+        wmdistance=min_v,
+        _sustainedProduct=most_similar_product
+    )
+
+
+@app.route('/sustained/most-similar-product') # type: ignore
+def sustained_most_similar():
+    args = request.args
+    print(args)
+    most_similar_product_name = _sustained_most_similar_product(args['s1'])
+    return most_similar_product_name.toJson()
+    
 
 
 @app.route('/most_similar')
@@ -149,14 +353,17 @@ if __name__ == '__main__':
     logger.verbose("Loading model...")
     # model = models.Word2Vec.load_word2vec_format(model_path, binary=binary)
     model = models.KeyedVectors.load_word2vec_format(model_path, binary=binary)
-    print(model["queen"])
+    # import gensim.downloader as api
+    # model = api.load('word2vec-google-news-300')
+    # print(model["queen"])
 
     norm = args.norm if args.norm else "both"
     norm = norm.lower()
     if (norm in ["clobber", "replace"]):
         norm = "clobber"
         logger.verbose("Normalizing (clobber)...")
-        model.init_sims(replace=True)
+        # model.init_sims(replace=True)
+        model.fill_norms(replace=True)
     elif (norm == "already"):
         model.wv.vectors_norm = model.wv.vectors  # prevent recalc of normed vectors (model.syn0norm = model.syn0)
     elif (norm in ["disable", "disabled"]):
@@ -164,7 +371,7 @@ if __name__ == '__main__':
     else:
         norm = "both"
         logger.verbose("Normalizing...")
-        model.init_sims()
+        model.fill_norms()
     if (norm == "both"):
         logger.verbose("Model loaded.")
     else:
@@ -175,7 +382,7 @@ if __name__ == '__main__':
     # api.add_resource(MostSimilar, path+'/most_similar')
     # api.add_resource(Model, path+'/model')
     # api.add_resource(ModelWordSet, '/word2vec/model_word_set')
-    app.run(host=host, port=port, debug=True)
+    app.run(host=host, port=port)
 
 
 

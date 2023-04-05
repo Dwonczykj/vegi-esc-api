@@ -4,6 +4,13 @@ from pprint import pprint
 from colorama import Fore, Style
 from IPython.core.display import HTML as html_print
 from icecream import ic, IceCreamDebugger
+# Initialize logging.
+import logging
+logging.basicConfig(
+    format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+
+
+global LOG_LEVEL
 
 LOG_LEVEL: int = 3
 
@@ -13,6 +20,10 @@ class LogLevel(Enum):
     warn = 2
     info = 3
     verbose = 4
+    
+def set_log_level(level:LogLevel):
+    LOG_LEVEL = level.value
+    return LOG_LEVEL
 
 
 PrintTypeLiteral = Literal['sys', 'ic', 'display', 'print', 'html_print']

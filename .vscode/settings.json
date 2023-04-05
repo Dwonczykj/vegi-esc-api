@@ -1,0 +1,4 @@
+{
+    // "python.defaultInterpreterPath": "../word2vec_pip_env/bin",
+    "python.defaultInterpreterPath": "/opt/homebrew/Caskroom/miniconda/base/envs/word2vec/bin",
+}
