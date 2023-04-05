@@ -1,8 +1,7 @@
-name: word2vec
+name: vegi-esc-server
 channels:
   - defaults
   - conda-forge
-  - anaconda
 dependencies:
   - pot
   - numpy
@@ -23,4 +22,7 @@ dependencies:
   - cachetools
   - dataclasses
   - jsons
+  - conda-lock
+  - gunicorn
+  - uvicorn
 prefix: /opt/homebrew/Caskroom/miniconda/base/envs/word2vec

@@ -1,0 +1,10 @@
+FROM continuumio/anaconda3:2020.11
+
+COPY . .
+RUN conda env create 
+RUN conda run -n vegi-esc-server \
+  python -m pip install --no-deps -e .
+CMD [ \
+  "conda", "run", "-n", "vegi-esc-server", \
+  "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "word2vec-api:app" \
+  ]

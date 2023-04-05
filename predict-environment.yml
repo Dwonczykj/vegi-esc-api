@@ -1,0 +1,24 @@
+name: vegi-esc-server
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - pot
+  - numpy
+  - nltk
+  - gensim
+  - flask
+  - paramiko
+  - boto3
+  - pymysql
+  - yaml
+  - pyyaml
+  - future
+  - aiohttp
+  - python-dotenv
+  - cachetools
+  - dataclasses
+  - jsons
+  - gunicorn
+  - uvicorn
+prefix: /opt/homebrew/Caskroom/miniconda/base/envs/word2vec
