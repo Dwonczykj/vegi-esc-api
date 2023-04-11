@@ -8,15 +8,15 @@
             "name": "Python word2vec-api (5002)",
             "type": "python",
             "request": "launch",
-            "program": "word2vec-api.py",
+            "program": "src/vegi_esc_api/word2vec-api.py",
             "args": [
                 // "run",
                 // "--no-debugger",
                 // "--no-reload",
-                "--model",
-                "./models/GoogleNews-vectors-negative300.bin",
-                "--binary",
-                "BINARY",
+                // "--model",
+                // "./models/GoogleNews-vectors-negative300.bin",
+                // "--binary",
+                // "BINARY",
                 "--path",
                 "/word2vec",
                 "--host",
@@ -25,6 +25,9 @@
                 "5002"
             ],
             "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/:${workspaceFolder}/src/:${workspaceFolder}/src/vegi_esc_api/:"
+            },
             "justMyCode": true
         },
         {
@@ -41,7 +44,7 @@
             "request": "launch",
             "module": "flask",
             "env": {
-                "FLASK_APP": "word2vec-api.py",
+                "FLASK_APP": "src/vegi_esc_api/word2vec-api.py",
                 "FLASK_DEBUG": "1"
             },
             "args": [

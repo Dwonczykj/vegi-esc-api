@@ -28,6 +28,7 @@ localstorage
 backup_localstorage
 
 models
+old_models
 word2vec_pip_env
 hosts.yml
 
@@ -185,6 +186,7 @@ celerybeat.pid
 
 # Environments
 .env
+*.env
 .venv
 env/
 venv/
@@ -222,4 +224,5 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-build_docker.sh
+# build_docker.sh
+environment_backup.yml

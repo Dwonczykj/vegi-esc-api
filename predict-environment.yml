@@ -1,24 +1,25 @@
-name: vegi-esc-server
+name: tes2
 channels:
-  - defaults
   - conda-forge
+  - defaults
 dependencies:
-  - pot
-  - numpy
-  - nltk
-  - gensim
-  - flask
-  - paramiko
-  - boto3
-  - pymysql
-  - yaml
-  - pyyaml
-  - future
+  - pip
   - aiohttp
-  - python-dotenv
+  - boto3
   - cachetools
   - dataclasses
-  - jsons
+  - flask
+  - future
+  - gensim
   - gunicorn
+  - jsons
+  - nltk
+  - numpy
+  - paramiko
+  # - pot # BUG for osx-64 -> linux-64, osx-64, osx-arm64, win-32, win-64 ~ https://anaconda.org/conda-forge/pot
+  - pymysql # ~ https://anaconda.org/anaconda/pymysql
+  - python-dotenv 
+  - pyyaml
+  - setuptools_scm
   - uvicorn
-prefix: /opt/homebrew/Caskroom/miniconda/base/envs/word2vec
+prefix: /opt/homebrew/Caskroom/miniconda/base/envs/tes2

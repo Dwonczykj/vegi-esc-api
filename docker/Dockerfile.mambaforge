@@ -1,0 +1,88 @@
+# Container for building the environment
+FROM condaforge/mambaforge:4.9.2-5 as conda
+
+COPY conda-lock.yml .
+
+## Use BuildKit's caching mounts to speed up builds.
+##
+## If you don't use BuildKit,
+## add `&& conda clean -afy` at the end of this line.
+## where conda clean args:
+##    -a, --all             Remove index cache, lock files, unused cache packages, tarballs, and logfiles. 
+##    -f, --force-pkgs-dirs
+##                          Remove *all* writable package caches.
+##                          This option is not included with the --all flag. 
+##                          WARNING: This will break environments with packages installed using
+##                              symlinks back to the package cache.
+##    -l, --logfiles        Remove log files.
+## Next run the mamba install step (faster than conda install):
+# RUN mamba create --copy -p /env --file conda-lock.yml && \ 
+#     conda clean -afy
+# RUN mamba create --copy -p /env --file conda-lock.yml && \
+#    echo 4
+## else if you do use BuildKit:
+## where conda create args:
+##      -n ENVIRONMENT, --name ENVIRONMENT name of environment
+##      -p PATH, --prefix PATH  Full path to the output environment location instead of -name argument (i.e. prefix).
+##          NOTE: either -n or -p can be passed, not both, we use the copy arg with p for creating a full env at a specific location with no symlinks
+##      --file FILE           Read package versions from the given file. Repeated file specifications can be passed (e.g. --file=file1 --file=file2).
+##      --copy                Install all packages using copies instead of hard- or soft-linking.
+
+# RUN --mount=type=cache,target=/opt/conda/pkgs mamba create --copy -p /env --file conda-lock.yml && echo 4
+## ~ https://docs.docker.com/build/cache/
+RUN --mount=type=cache,target=/opt/homebrew/Caskroom/miniconda/base/pkgs mamba env create -p /env --file conda-lock.yml && echo 4
+# RUN --mount=type=cache,target=/opt/conda/pkgs mamba env create -p /env --file conda-lock.yml && echo 4
+
+## Now add any local files from your repository (i.e. the repo on the machine to within the docker image).
+## As an example, we add a Python package into
+## the environment.
+# See putting only the files you want to copy over here in a ./src subfolder locally or using .dockerignore so that other stuff is not copied over ~ https://docs.docker.com/build/cache/#:~:text=tips%20and%20tricks%3A-,Don%E2%80%99t%20include%20unnecessary%20files,-Be%20considerate%20of
+COPY . /pkg
+## install all into a conda package : install the locally copied /pkg (pip package) within the new conda venv which is why we must run conda run first
+RUN conda run -p /env python -m pip install --no-deps /pkg`
+
+# Clean in a separate layer as calling conda still generates some __pycache__ files
+# RUN find -name '*.a' -delete && \
+#     rm -rf /env/conda-meta && \
+#     rm -rf /env/include && \
+#     rm /env/lib/libpython3.9.so.1.0 && \
+#     find -name '__pycache__' -type d -exec rm -rf '{}' '+' && \
+#     rm -rf /env/lib/python3.9/site-packages/pip /env/lib/python3.9/idlelib /env/lib/python3.9/ensurepip \
+#     /env/lib/libasan.so.5.0.0 \
+#     /env/lib/libtsan.so.0.0.0 \
+#     /env/lib/liblsan.so.0.0.0 \
+#     /env/lib/libubsan.so.1.0.0 \
+#     /env/bin/x86_64-conda-linux-gnu-ld \
+#     /env/bin/sqlite3 \
+#     /env/bin/openssl \
+#     /env/share/terminfo && \
+#     find /env/lib/python3.9/site-packages/scipy -name 'tests' -type d -exec rm -rf '{}' '+' && \
+#     find /env/lib/python3.9/site-packages/numpy -name 'tests' -type d -exec rm -rf '{}' '+' && \
+#     find /env/lib/python3.9/site-packages/pandas -name 'tests' -type d -exec rm -rf '{}' '+' && \
+#     find /env/lib/python3.9/site-packages -name '*.pyx' -delete && \
+#     rm -rf /env/lib/python3.9/site-packages/uvloop/loop.c
+
+# Distroless for execution
+FROM gcr.io/distroless/base-debian10
+## Copy over the conda environment from the previous stage to the new distroless container from the old conda disk image container.
+## This must be located at the same location within the docker image
+COPY --from=conda /env /env
+# IGNROE: Here we either need to copy the whole src code over or the wheel that we installed and packageed above 
+
+# From SKLearn pipeline in ~ https://github.com/xhochy/nyc-taxi-fare-prediction-deployment-example/blob/a37ec165e8f624ed8338067f7b315c663448ef50/src/nyc_taxi_fare/cli.py#L35
+# COPY model.pkl .
+## The command needs to be in […] notation as
+## the distroless container doesn't contain
+## a shell and the command uses the copied over gunicorn conda installation that we installed using `conda env create -p /env`
+# CMD [ \
+#     "/env/bin/gunicorn", "-w", "1", "--bind", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "word2vec-api:gunicorn_app", "--timeout", "600" \
+#     ]
+# CMD [ \
+#     "/env/bin/gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:5002", "word2vec-api:gunicorn_app", "--timeout", "600" \
+#     ]
+CMD [ \
+    "/env/bin/gunicorn", "--bind", "0.0.0.0:8000", "vegi_esc_api.word2vec-api:gunicorn_app", "--timeout", "600" \
+    ]
+# CMD [ \
+#     "/env/bin/gunicorn", "--worker-class", "aiohttp.worker.GunicornWebWorker", "--bind", "0.0.0.0:5002", "word2vec-api:gunicorn_app", "--timeout", "600" \
+#     ]

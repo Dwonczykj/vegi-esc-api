@@ -1,0 +1,12 @@
+data
+docker
+.mypy_cache
+.vscode
+backup_localstorage
+localstorage
+old_models
+word2vec_pip_env
+
+.env
+*.env
+hosts.yml

@@ -1,6 +1,7 @@
+@ ~ https://docs.docker.com/engine/reference/commandline/buildx_build/
 % : docker/Dockerfile.%
-	docker buildx build -t vegi-esc-server-$@ --load -f $< .
+	docker buildx build --platform=linux/amd64 -t vegi_esc_server_$@ --load -f $< .
 
 lock:
-	conda lock --mamba -p osx-arm64 -p linux-64 -f environment.yml
-	conda lock --mamba -p osx-arm64 -p linux-64 -f predict-environment.yml --filename-template 'predict-{platform}.lock'
+	conda lock -p osx-64 -p linux-64 -f environment.yml
+	conda lock -p osx-64 -p linux-amd-64 -f predict-environment.yml --filename-template 'predict-{platform}.lock'

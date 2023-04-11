@@ -1,10 +1,15 @@
 FROM continuumio/anaconda3:2020.11
 
 COPY . .
-RUN conda env create 
-RUN conda run -n vegi-esc-server \
-  python -m pip install --no-deps -e .
+## NOTE use conda create and not conda env create the latter of which is a legacy command
+## use conda env create or mamba create when using the mamba docker image
+# RUN conda env create --file environment.yml -n vegi_esc_server
+RUN conda env create --file environment.yml -p /env && conda clean -afy
+# RUN conda run -n vegi_esc_server \
+#   python -m pip install --no-deps -e .
+# CMD [ \
+#   "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "word2vec-api:gunicorn_app" \
+#   ]
 CMD [ \
-  "conda", "run", "-n", "vegi-esc-server", \
-  "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "word2vec-api:app" \
+  "/env/bin/gunicorn", "-b", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "word2vec-api:gunicorn_app" \
   ]

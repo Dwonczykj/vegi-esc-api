@@ -1,28 +1,25 @@
-name: vegi-esc-server
+name: tes2
 channels:
-  - defaults
   - conda-forge
+  - defaults
 dependencies:
-  - pot
-  - numpy
-  - nltk
-  - gensim
-  - flask
-  - paramiko
-  - boto3
-  - ipython
-  - icecream
-  - pymysql
-  - yaml
-  - pyyaml
-  - future
-  - autopep8
+  - pip
   - aiohttp
-  - python-dotenv
+  - boto3
   - cachetools
   - dataclasses
-  - jsons
-  - conda-lock
+  - flask
+  - future
+  - gensim
   - gunicorn
+  - jsons
+  - nltk
+  - numpy
+  - paramiko
+  - pot
+  - pymysql
+  - python-dotenv
+  - pyyaml
+  - setuptools_scm
   - uvicorn
-prefix: /opt/homebrew/Caskroom/miniconda/base/envs/word2vec
+prefix: /opt/homebrew/Caskroom/miniconda/base/envs/tes2
