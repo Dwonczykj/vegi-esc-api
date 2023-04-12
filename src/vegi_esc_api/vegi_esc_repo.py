@@ -1,6 +1,6 @@
 from vegi_esc_api.models import ESCSource, ESCRating, ESCExplanation, CachedItem
 import vegi_esc_api.logger as logger
-from vegi_esc_api.create_app import db
+from vegi_esc_api.extensions import db
 from sqlalchemy import asc, desc
 from datetime import datetime, timedelta
 import jsons

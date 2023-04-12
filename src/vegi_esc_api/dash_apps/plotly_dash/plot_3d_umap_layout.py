@@ -1,9 +1,14 @@
 # Import packages
-from dash import Dash, html, dash_table, dcc
+from dash import html, dash_table, dcc
 # from umap import UMAP
 from sklearn.manifold import TSNE
 import plotly.express as px
 import pandas as pd
+
+# endpoint of this page
+URL_RULE = "/custom-app"
+# dash internal route prefix, must be start and end with "/"
+URL_BASE_PATHNAME = "/dash/custom-app/"
 
 
 df_iris = px.data.iris()
@@ -26,11 +31,6 @@ fig_3d = px.scatter_3d(
     color=df_iris.species, labels={'color': 'species'}
 )
 fig_3d.update_traces(marker_size=8)
-
-
-# Initialize the app
-app = Dash(__name__)
-
 
 # features = df.loc[:, :'petal_width']
 
@@ -57,8 +57,8 @@ app = Dash(__name__)
 # Incorporate data
 df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminder2007.csv')
 
-# App layout
-app.layout = html.Div([
+# Initialize the app
+layout = html.Div([
     html.Div(children='My First App with Data and a Graph'),
     html.H1(children='3D Visualisation'),
     dcc.Graph(
@@ -74,12 +74,3 @@ app.layout = html.Div([
         figure=px.histogram(df, x='continent', y='lifeExp', histfunc='avg')
     ),
 ])
-
-
-# Run the app
-if __name__ == '__main__':
-    app.run_server(debug=True)
-
-    # ```shell
-    # python src/vegi_esc_api/dash_apps/plotly-dash/plot-3d-umap-app.py
-    # ```

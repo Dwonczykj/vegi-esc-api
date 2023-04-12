@@ -69,10 +69,10 @@ if config:
 # db = SQLAlchemy(app)
 
 
-app = create_app(None)
+server = create_app(None)
 
 
-@app.route("/login", methods=["POST", "GET"])
+@server.route("/login", methods=["POST", "GET"])
 def login():
     if request.method == "POST":
         user = request.form["nm"]
@@ -82,7 +82,7 @@ def login():
         return redirect(url_for("success", name=user))
 
 
-@app.route("/product/<id>")
+@server.route("/product/<id>")
 def product(id: int):
     product = None
     with SSHRepo(
@@ -102,7 +102,7 @@ def product(id: int):
     return json.dumps(product)
 
 
-@app.route("/rate-product/<id>")
+@server.route("/rate-product/<id>")
 def rate_product(id: int):
     with SSHRepo(
         # server_hostname=VEGI_SERVER_PRIVATE_IP_ADDRESS,
@@ -128,7 +128,7 @@ def rate_product(id: int):
     return json.dumps(rating)
 
 
-@app.route("/users")
+@server.route("/users")
 def users():
     users = []
     with SSHRepo(
@@ -159,12 +159,12 @@ def filter_words(words):
     return [word for word in words if word in model.key_to_index.keys()]
 
 
-@app.route("/success/<name>")
+@server.route("/success/<name>")
 def success(name: str):
     return "welcome %s" % name
 
 
-@app.route("/n_similarity")
+@server.route("/n_similarity")
 def n_similarity():
     args = request.args
     print(args)
@@ -175,7 +175,7 @@ def n_similarity():
     return f"Success: {result}"
 
 
-@app.route("/similarity")
+@server.route("/similarity")
 def similarity():
     if norm == "disable":
         return ("most_similar disabled", 400)
@@ -185,7 +185,7 @@ def similarity():
     return f"Success: {result}"
 
 
-@app.route("/sentence_similarity")
+@server.route("/sentence_similarity")
 def sentence_similarity():
     if norm == "disable":
         return ("most_similar disabled", 400)
@@ -197,7 +197,7 @@ def sentence_similarity():
     return f"Success: {result}"
 
 
-@app.route("/sustained/refresh")
+@server.route("/sustained/refresh")
 def sustained_refresh():
     ss = SustainedAPI()
     ss.refresh_products_lists()
@@ -219,7 +219,7 @@ def _sustained_most_similar_category_id_spaced(sentence1: str):
     return f"{most_similar}"
 
 
-@app.route("/sustained/most-similar-category")
+@server.route("/sustained/most-similar-category")
 def sustained_most_similar_category():
     args = request.args
     print(args)
@@ -277,7 +277,7 @@ def _sustained_most_similar_product(sentence1: str):
     )
 
 
-@app.route("/sustained/most-similar-product")  # type: ignore
+@server.route("/sustained/most-similar-product")  # type: ignore
 def sustained_most_similar():
     args = request.args
     print(args)
@@ -285,7 +285,7 @@ def sustained_most_similar():
     return most_similar_product_name.toJson()
 
 
-@app.route("/most_similar")
+@server.route("/most_similar")
 def most_similar():
     args = request.args
     pos = filter_words(args.get("positive", []))
@@ -306,7 +306,7 @@ def most_similar():
         return "An error occured!"
 
 
-@app.route("/model")
+@server.route("/model")
 def modelCall():
     args = request.args
     try:
@@ -319,7 +319,7 @@ def modelCall():
         return "An error occured!"
 
 
-@app.route("/model_word_set")
+@server.route("/model_word_set")
 def model_word_set():
     # args = request.args
     try:
@@ -331,12 +331,12 @@ def model_word_set():
         return "An error occured!"
 
 
-@app.errorhandler(404)
+@server.errorhandler(404)
 def pageNotFound(error):
     return "page not found"
 
 
-@app.errorhandler(500)
+@server.errorhandler(500)
 def raiseError(error):
     return error
 
@@ -456,7 +456,7 @@ if __name__ == "__main__":
     )
     args = p.parse_args()
 
-    runApp = initApp(app=app, args=args)
+    runApp = initApp(app=server, args=args)
     # api.add_resource(N_Similarity, path+'/n_similarity')
     # api.add_resource(Similarity, path+'/similarity')
     # api.add_resource(MostSimilar, path+'/most_similar')
@@ -470,5 +470,5 @@ else:
     logger.info(
         f'Thread name running app is "{__name__}"'
     )  # Thread name running app is "app" if command run is `gunicorn --bind 127.0.0.1:5002 app:gunicorn_app --timeout 90`
-    runApp = initApp(app=app)
-    gunicorn_app = app  # gunicorn --bind 127.0.0.1:5002 app:gunicorn_app --timeout 90 --log-level=debug
+    runApp = initApp(app=server)
+    gunicorn_app = server  # gunicorn --bind 127.0.0.1:5002 app:gunicorn_app --timeout 90 --log-level=debug

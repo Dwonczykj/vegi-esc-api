@@ -1,21 +1,32 @@
 # manage.py
 
-from vegi_esc_api.create_app import create_app, db
-from vegi_esc_api.models import ESCSource, ESCRating, ESCExplanation, CachedItem
-from flask.cli import FlaskGroup
-from datetime import datetime
-import jsons
-import json
+from vegi_esc_api.create_app import create_app
+from vegi_esc_api.extensions import db
+from vegi_esc_api.models import ESCSource, ESCRating, ESCExplanation, CachedItem, User
 from vegi_esc_api.models_wrapper import CachedSustainedItemCategory
 from vegi_esc_api.sustained_models import SustainedCategory, SustainedProductBase
+from flask.cli import FlaskGroup
+from datetime import datetime
+from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash
+import jsons
+import json
 
 app = create_app()
 cli = FlaskGroup(create_app=create_app)
 
 
+def check_password(password_hash, password):
+    return check_password_hash(password_hash, password)
+
+
 @cli.command('populate_db')
 def populate_db():
     "populate reseted database"
+    user = User(username='joeyd', password_hash=generate_password_hash('joeyd'))
+    db.session.add(user)
+    print("User created. User id={}".format(user.id))
+
     source = ESCSource(name="Napolina", source_type="Website", domain="https://napolina.com/", credibility=0)
     db.session.add(source)
     print("ESCSource created. ESCSource id={}".format(source.id))
