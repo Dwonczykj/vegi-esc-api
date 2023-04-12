@@ -1,4 +1,4 @@
-
+from vegi_esc_api.views import base_app
 from dotenv import load_dotenv
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -30,6 +30,8 @@ def create_app(script_info=None):
         supports_credentials=True
     )
     db.init_app(app)
+    
+    app.register_blueprint(base_app)
 
     # TODO: register api
     # from app.api import api
