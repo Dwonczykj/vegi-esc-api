@@ -1,4 +1,4 @@
-word2vec-api
+app
 ============
 
 Simple web service providing a word embedding API. The methods are based on Gensim Word2Vec implementation. Models are passed as parameters and must be in the Word2Vec text or binary format. Updated to run on Python 3.
@@ -15,11 +15,11 @@ pip install -r requirements.txt
 
 # Launching the service
 ```
-python word2vec-api --model path/to/the/model [--host host --port 1234]
+python app --model path/to/the/model [--host host --port 1234]
 ```
 or   
 ```
-python word2vec-api.py --model /path/to/GoogleNews-vectors-negative300.bin --binary BINARY --path /word2vec --host 0.0.0.0 --port 5000
+python app.py --model /path/to/GoogleNews-vectors-negative300.bin --binary BINARY --path /word2vec --host 0.0.0.0 --port 5000
 ```
 
 
@@ -72,11 +72,11 @@ We create a Procfile to tell heroku how to host the flask application.
 
 We use gunicorn to manage creating the instance of flask
 
-We have the file containing the root function for our flask app in `word2vec-api.py`
+We have the file containing the root function for our flask app in `app.py`
 
 This is reflected with a Procfile as so:
 ```
-web: gunicorn word2vec-api:app
+web: gunicorn app:app
 ```
 
 See a how to [here](https://evancalz.medium.com/deploying-your-flask-app-to-heroku-43660a761f1c)

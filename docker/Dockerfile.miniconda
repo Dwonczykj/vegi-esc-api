@@ -18,16 +18,16 @@ COPY . .
 #   python -m pip install --no-deps -e .
 
 # CMD [ \
-#   "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "word2vec-api:app" \
+#   "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app:app" \
 #   ]
 
-# on local machine, we are running `python word2vec-api.py --model ./models/GoogleNews-vectors-negative300.bin  --binary BINARY --path /word2vec --host 0.0.0.0 --port 5002`
-# RUN python word2vec-api.py --model ./models/GoogleNews-vectors-negative300.bin  --binary BINARY --path /word2vec --host 0.0.0.0 --port 5002
+# on local machine, we are running `python app.py --model ./models/GoogleNews-vectors-negative300.bin  --binary BINARY --path /word2vec --host 0.0.0.0 --port 5002`
+# RUN python app.py --model ./models/GoogleNews-vectors-negative300.bin  --binary BINARY --path /word2vec --host 0.0.0.0 --port 5002
 CMD [ \
-  "/env/bin/gunicorn", "-w", "1", "--bind", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "word2vec-api:gunicorn_app", "--timeout", "600" \
+  "/env/bin/gunicorn", "-w", "1", "--bind", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "app:gunicorn_app", "--timeout", "600" \
   ]
 # CMD [ \
-#   "python", "./word2vec-api.py", \
+#   "python", "./app.py", \
 #   "--model", "./models/GoogleNews-vectors-negative300.bin", \
 #   "--binary", "BINARY", \
 #   "--path", "/word2vec", \

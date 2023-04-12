@@ -1,5 +1,6 @@
 # from paramiko.util import ClosingContextManager
 # from paramiko.transport import Transport
+from dotenv import load_dotenv
 from paramiko.ssh_exception import (
     SSHException,
     BadHostKeyException,
@@ -29,12 +30,12 @@ from vegi_esc_api.logger import info, LOG_LEVEL, warn
 from vegi_esc_api.select_vendor_products_with_esc import select_products_sql
 
 
-
-
 T = TypeVar('T')
+
 
 class Lazy(Generic[T]):
     pass
+
 
 class LocalRepo:
     def __init__(self,
@@ -362,8 +363,8 @@ class SSHRepo:
                 if not account in expected:
                     warn(f"Entry '{line}' is a surprise on {server}.")
 
+
 if __name__ == '__main__':
-    import yaml
     VEGI_SERVER_P_KEY_FILE: str = ''
     VEGI_SERVER_PUBLIC_HOSTNAME = ''
     VEGI_SERVER_PUBLIC_IP_ADDRESS = ''
@@ -373,26 +374,42 @@ if __name__ == '__main__':
     SQL_USER = ''
     SQL_PASSWORD = ''
     SQL_DB_NAME = ''
-    with open('hosts.yml') as f:
-        hostKVPs = yaml.load(f, Loader=yaml.FullLoader)
-        useQA = False
-        if useQA:
-            config = hostKVPs['all']['hosts']['vegi-backend-qa']
-            VEGI_SERVER_IP_ADDRESS = config['ansible_ssh_host']
-            VEGI_SERVER_PRIVATE_IP_ADDRESS = config['ansible_ssh_private_ip']
-            VEGI_SERVER_PUBLIC_HOSTNAME = 'ec2-'+config['ansible_ssh_host'].replace(
-                '.', '-')+'.compute-1.amazonaws.com'  # ec2-54-221-0-234.compute-1.amazonaws.com
-            VEGI_SERVER_USERNAME = config['ansible_user']
-            # VEGI_SERVER_P_KEY_FILE = config['ansible_ssh_private_key_file'].replace('~', '/Users/joey')
-            VEGI_SERVER_P_KEY_FILE = os.path.expanduser(
-                config['ansible_ssh_private_key_file'])
-            SSH_ARGS = config['ansible_ssh_extra_args']
-        else:
-            config = hostKVPs['all']['hosts']['vegi-localhost']
+    load_dotenv()
+    config = os.environ
+    if config:
+        VEGI_SERVER_IP_ADDRESS = config.get('ansible_ssh_host', '')
+        VEGI_SERVER_PRIVATE_IP_ADDRESS = config.get('ansible_ssh_private_ip', '')
+        VEGI_SERVER_PUBLIC_HOSTNAME = 'ec2-' + config.get('ansible_ssh_host', '').replace(
+            '.', '-') + '.compute-1.amazonaws.com'  # ec2-54-221-0-234.compute-1.amazonaws.com
+        VEGI_SERVER_USERNAME = config.get('ansible_user', '')
+        # VEGI_SERVER_P_KEY_FILE = config.get('ansible_ssh_private_key_file','').replace('~', '/Users/joey')
+        VEGI_SERVER_P_KEY_FILE = os.path.expanduser(
+            config.get('ansible_ssh_private_key_file', ''))
+        SSH_ARGS = config.get('ansible_ssh_extra_args', '')
+        SQL_USER = config.get('mysql_production_user', '')
+        SQL_PASSWORD = config.get('mysql_production_password', '')
+        SQL_DB_NAME = config.get('mysql_production_database', '')
+    # import yaml
+    # with open('hosts.yml') as f:
+    #     hostKVPs = yaml.load(f, Loader=yaml.FullLoader)
+        # useQA = False
+        # if useQA:
+        #     config = hostKVPs['all']['hosts']['vegi-backend-qa']
+        #     VEGI_SERVER_IP_ADDRESS = config['ansible_ssh_host']
+        #     VEGI_SERVER_PRIVATE_IP_ADDRESS = config['ansible_ssh_private_ip']
+        #     VEGI_SERVER_PUBLIC_HOSTNAME = 'ec2-'+config['ansible_ssh_host'].replace(
+        #         '.', '-')+'.compute-1.amazonaws.com'  # ec2-54-221-0-234.compute-1.amazonaws.com
+        #     VEGI_SERVER_USERNAME = config['ansible_user']
+        #     # VEGI_SERVER_P_KEY_FILE = config['ansible_ssh_private_key_file'].replace('~', '/Users/joey')
+        #     VEGI_SERVER_P_KEY_FILE = os.path.expanduser(
+        #         config['ansible_ssh_private_key_file'])
+        #     SSH_ARGS = config['ansible_ssh_extra_args']
+        # else:
+        #     config = hostKVPs['all']['hosts']['vegi-localhost']
         
-        SQL_USER = config['mysql_production_user']
-        SQL_PASSWORD = config['mysql_production_password']
-        SQL_DB_NAME = config['mysql_production_database']
+        # SQL_USER = config['mysql_production_user']
+        # SQL_PASSWORD = config['mysql_production_password']
+        # SQL_DB_NAME = config['mysql_production_database']
     
     if VEGI_SERVER_P_KEY_FILE:
         with SSHRepo(
@@ -406,9 +423,6 @@ if __name__ == '__main__':
             db_username=SQL_USER,
             db_password=SQL_PASSWORD,
         ) as repoConn:
-
-            
-
             users = repoConn.read_all_records_from_users()
 
             # repoConn.close()
@@ -428,6 +442,5 @@ if __name__ == '__main__':
             # repoConn.close()
 
             info(users)
-        
 
     info('DONE')

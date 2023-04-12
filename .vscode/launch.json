@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python word2vec-api (5002)",
+            "name": "Python app (5002)",
             "type": "python",
             "request": "launch",
-            "program": "src/vegi_esc_api/word2vec-api.py",
+            "program": "src/vegi_esc_api/app.py",
             "args": [
                 // "run",
                 // "--no-debugger",
@@ -36,6 +36,9 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/:${workspaceFolder}/src/:${workspaceFolder}/src/vegi_esc_api/:"
+            },
             "justMyCode": true
         },
         {
@@ -44,7 +47,8 @@
             "request": "launch",
             "module": "flask",
             "env": {
-                "FLASK_APP": "src/vegi_esc_api/word2vec-api.py",
+                "PYTHONPATH": "${workspaceFolder}/:${workspaceFolder}/src/:${workspaceFolder}/src/vegi_esc_api/:",
+                "FLASK_APP": "src/vegi_esc_api/app.py",
                 "FLASK_DEBUG": "1"
             },
             "args": [

@@ -1,1 +1,1 @@
-web: gunicorn word2vec-api:app
+web: gunicorn app:app

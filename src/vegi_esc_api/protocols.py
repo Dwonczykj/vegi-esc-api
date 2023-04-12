@@ -1,17 +1,18 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from vegi_esc_api.sustained_models import SustainedProductBase
+from vegi_esc_api.json_class_helpers import DataClassJsonWrapped
 
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal, Optional
+
 # import os
 # import pandas as pd
 # import numpy as np
 # import re
 # from typing import Annotated
 # from typing import Self #! available from python 3.11
-from typing import Literal, Optional, Protocol, Any
 
-from vegi_esc_api.sustained import SustainedProductBase
-from vegi_esc_api.json_class_helpers import DataClassJsonWrapped
 
 @dataclass
 class IngredientComposition(DataClassJsonWrapped):
@@ -19,11 +20,12 @@ class IngredientComposition(DataClassJsonWrapped):
     value: float | Literal[0]
     checks: dict[str, bool]
 
+
 @dataclass
 class Ingredient(DataClassJsonWrapped):
     main_ingredient: str
-    embedded_ingredients: dict[int,
-                               EmbeddedIngredientDetails | IngredientDetails]
+    embedded_ingredients: dict[int, EmbeddedIngredientDetails | IngredientDetails]
+
 
 @dataclass
 class IngredientDetails(DataClassJsonWrapped):
@@ -31,6 +33,7 @@ class IngredientDetails(DataClassJsonWrapped):
     composition: IngredientComposition
     is_embedded: bool
     ingredient: str
+
 
 @dataclass
 class EmbeddedIngredientDetails(DataClassJsonWrapped):
@@ -40,7 +43,7 @@ class EmbeddedIngredientDetails(DataClassJsonWrapped):
     ingredient: Ingredient
 
 
-ESCSourceType = Literal['api'] | Literal['database'] | Literal['webpage']
+ESCSourceType = Literal["api"] | Literal["database"] | Literal["webpage"]
 
 
 @dataclass
@@ -50,23 +53,26 @@ class ESCSource(DataClassJsonWrapped):
     domain: str
     credibility: float  # Annotated[float, ValueRange(0, 1)]
 
+
 JsonEncodedStr = str
+
 
 @dataclass
 class ESCExplanation(DataClassJsonWrapped):
     title: str
     reasons: list[str]
     measure: float  # Annotated[float, ValueRange(0, 5)]
-    evidence: JsonEncodedStr # json encoded string
+    evidence: JsonEncodedStr  # json encoded string
     # escrating: Optional[int]
     escsource: Optional[str]
-    
+
+
 @dataclass
 class ESCProduct(DataClassJsonWrapped):
-    name:str
-    category:str
-    description:Optional[str]
-    shortDescription:Optional[str]
+    name: str
+    category: str
+    description: Optional[str]
+    shortDescription: Optional[str]
     basePrice: Optional[float]
     imageUrl: Optional[str]
     isAvailable: Optional[bool]
@@ -83,7 +89,7 @@ class ESCProduct(DataClassJsonWrapped):
     supplier: Optional[str]
     brandName: Optional[str]
     taxGroup: Optional[str]
-    
+
 
 @dataclass
 class ESCRating(DataClassJsonWrapped):
@@ -100,10 +106,10 @@ class ESCRating(DataClassJsonWrapped):
 class ESCRatingExplained(DataClassJsonWrapped):
     rating: ESCRating
     explanations: list[ESCExplanation]
-    
+
 
 @dataclass
 class ESCRatingExplainedResult(ESCRatingExplained):
-    original_search_term:str
-    wmdistance:float
-    _sustainedProduct:SustainedProductBase
+    original_search_term: str
+    wmdistance: float
+    _sustainedProduct: SustainedProductBase
