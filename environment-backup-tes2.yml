@@ -9,7 +9,6 @@ dependencies:
   - cachetools
   - dataclasses
   - flask
-  - flask-login
   - future
   - gensim
   - gunicorn
@@ -23,19 +22,4 @@ dependencies:
   - pyyaml
   - setuptools_scm
   - uvicorn
-  - wtforms
-  - flask-wtf
-  - werkzeug
-  - ca-certificates
-  - certifi
-  - psycopg2
-  - flask-sqlalchemy
-  - flask-migrate
-  - flask-cors
-  - wtforms
-  - openssl
-  - plotly
-  - dash
-  - pandas
-  - scikit-learn
 prefix: /opt/homebrew/Caskroom/miniconda/base/envs/tes2

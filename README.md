@@ -81,3 +81,44 @@ web: gunicorn app:app
 
 See a how to [here](https://evancalz.medium.com/deploying-your-flask-app-to-heroku-43660a761f1c)
 
+## Helpful Scripts
+
+See scripts in ./shell_scripts_devops/*.sh
+
+
+
+``` shell
+conda activate vegi-esc-api
+conda env export --from-history > environment.yml
+
+conda-lock -f predict-environment.yml -f pot-environment.yml -p linux-64 -k explicit --filename-template "predict-{platform}.lock"
+
+zsh ./shell_scripts_devops/makeRun.sh # ~ see https://docs.docker.com/engine/reference/commandline/buildx_build/
+# or manually run:
+# make distroless-buildkit
+# imageName="vegi_esc_server_distroless-buildkit"
+# docker run --platform linux/amd64 -it -p 2001:5002 $imageName
+# open localhost:2001/success/fenton
+
+! if see: no space left on device error, then run: `docker system prune`
+
+
+```
+
+
+### Dash Endpoints:
+
+- http://localhost:5002/dashboard/ where the code is defined in layouts for dash apps
+### All other Endpoints defined in `app.py` with port `2001` for when in docker image, and `5002` when running without docker
+- http://localhost:5002/success/fenton
+- http://127.0.0.1:5002/n_similarity?ws1=Sushi&ws1=Shop&ws2=Japanese&ws2=Restaurant -> { Success: 0.7014271020889282 }
+- http://127.0.0.1:5002/similarity?w1=Sushi&w2=Japanese -> { Success: 0.3347574472427368 }
+- http://localhost:2001/similarity?w1=bike&w2=car -> { Success: 0.7764649391174316 } 
+- http://127.0.0.1:5002/most_similar?positive=indian&positive=food[&negative=][&topn=] -> Internal Server Error!
+- http://127.0.0.1:5002/model?word=restaurant -> { Success: AAAYvgAA/r0AACk9AABWPgAA+b0AAFc+AABjvQAAVb0AAGs+AAClPQAA8D0AAFQ8AAA9PgAAs74AADu9AAC1PQAAqb0AAFs8AACXPQAAmL0AAEo+AAAxvgAAqjwAABm+AABvvAAA8r0AAJc9AAAuPgAAtT4AAO89AAAqvgAAer4AAKE9AAA+PgAAM74AALC9AAD6PgAAHz0AAAy+AADhvQAALr4AAGq9AACwPQAApj4AAL+9AABsvgAA1b4AAGm7AABNPQAAcj4AAKM8AAA+PgAAnj0AAFy+AADcvQAAlrwAAF0+AACxPQAA9L0AACu+AAAFvgAAED0AAG6+AABevgAADD4AAGs9AAAvPQAAUr4AAIU+AABEvgAAsD0AAAI+AAAMPQAAiL0AAOK+AADgvQAA474AAFo+AAA3OwAAh74AAAo+AACZvgAAQr4AANM9AACuvgAA1jwAAKy+AACrPgAAlD0AAK6+AAAcvQAAn74AAIe+AAAJvQAAOb4AAAS+AAAOvgAACb4AABc+AADuvQAAn74AADS+AABdPgAAJDwAAHY+AABgvgAAwD0AACy+AAC4vAAAAL4AAGO+AAAjPQAAjb0AAJ6+AAAwPgAAX74AALM9AADXvQAAPr4AAJC9AABLvgAAyb0AABe9AACaPQAAVj0AADw9AACuvAAAeDwAAAM9AAAzPQAAvD0AAKW9AACCPgAAET4AAIu9AACMPQAApT0AAI29AADfPQAABT4AAD2+AAD+vQAAPL4AAEK9AAC0PAAApb0AAFu+AAArPgAAWL4AAGY+AAAlPgAAuD4AAHA9AAC3PQAA7jwAAJk7AAAZPQAAeD0AAAW+AACuvQAAab4AAEc+AADxuwAAiL0AAJu9AAAEvgAAOr4AADC9AADWPQAAaL4AAGa+AACtvQAAiD0AAHG+AABJvgAASj4AAIo+AACQPgAAgT4AAAk+AADSvQAAyz0AAB49AACQvgAA+D0AAPq9AAAOvQAA1j4AAKe9AACwvgAADj0AAEM+AABuvQAAPT4AAMy9AAAwPgAAkD0AAKC7AAA8PAAANb0AAIW+AABFPgAAtDoAADs7AADkvAAAW74AANs9AAA+PgAAkzwAAN47AACRvQAAwz0AAC49AAAiPgAA570AAHE+AAD3vQAAvjwAACG+AAA0PQAAFT4AAKU9AACUvQAAwLwAADo+AAAgPgAAM74AAHo+AABVvgAArLwAACM+AAA4vgAA0b4AAHY+AABTPgAAZr4AAJo+AADiPQAAPb4AAKs9AAB4PgAA8b0AADA+AACmvAAAKr0AAI2+AACxPgAApL0AADc+AAC+PQAAGb0AACM+AAB0PgAAQr4AANW9AACQvgAAgz0AAD29AAB5vgAARD0AAJa9AADlOwAArTwAAMY9AACcPQAAKz0AAHu+AABnvgAAsb0AAAA8AAB3vQAAAb0AAJe+AAAePQAADz0AAGc8AAD7vQAAEr4AAEs+AADyvgAAq7wAAAk+AAAfvgAAYD4AAEW+AAAZvQAAO74AAHI+AAAivgAA7D4AAOQ8AABuPQAAVDwAAPc+AADEPgAAyr0AAHY9AADCvQAADT4AAOo9 }
+- http://127.0.0.1:5002/model_word_set -> Internal Server Error!
+- http://127.0.0.1:2001/nearest-word-in-model?w1=bike
+- http://localhost:2001/vegi-users -> Success
+
+- http://127.0.0.1:2001/sentence_similarity?s1=Chocolate%20cake&s2=Bakery -> { Success: 0.367022610081167 }
+- http://127.0.0.1:2001/rate-latest?n=1 -> 

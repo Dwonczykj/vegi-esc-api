@@ -1,7 +1,9 @@
+from vegi_esc_api.create_app import create_app
 from vegi_esc_api.sustained import SustainedAPI
 
 if __name__ == "__main__":
-    ss = SustainedAPI()
+    app, vegi_db_session = create_app(None)
+    ss = SustainedAPI(app=app)
 
     # ss.refresh("Tins, Pickles & Chutney")
     # TODO: At some point need to refresh all categories in below as for all before Tins, Pickles & Chutney, i only fetched the first page

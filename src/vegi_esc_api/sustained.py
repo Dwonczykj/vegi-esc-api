@@ -1,23 +1,31 @@
 from __future__ import annotations
 
 import os
+from flask import Flask
 import requests
 import json
 import jsons
 import cachetools.func
+from vegi_esc_api.create_app import create_app
 
 import vegi_esc_api.logger as logger
-from vegi_esc_api.models import CachedItem
+# from vegi_esc_api.models import 
 from vegi_esc_api.models_wrapper import CachedSustainedItemCategory
 from vegi_esc_api.sustained_mapper import SustainedVegiMapper
 from vegi_esc_api.sustained_models import SustainedCategoriesList, SustainedCategory, SustainedImpact, SustainedImpactsList, SustainedProductBase, SustainedProductExplained, SustainedProductsList, SustainedSingleProductResult
-from vegi_esc_api.vegi_esc_repo import Vegi_ESC_Repo
+from vegi_esc_api.vegi_esc_repo import Vegi_ESC_Repo, CachedItemSql, ESCSourceSql, ESCRatingSql
+# from vegi_esc_api.models import CachedItemCreate
+
+from datetime import datetime
 
 
 class SustainedAPI:
     headers = {"accept": "application/json"}
-    vegi_esc_repo = Vegi_ESC_Repo()
     sustained_to_vegi_mapper = SustainedVegiMapper()
+
+    def __init__(self, app: Flask) -> None:
+        SustainedAPI.app = app
+        SustainedAPI.vegi_esc_repo = Vegi_ESC_Repo(app=app)
 
     def _load_products_from_fn(self, category_id: str):
         fn = self.get_localstorage_fn(category_id)
@@ -32,17 +40,35 @@ class SustainedAPI:
         if not os.path.exists(dirname):
             os.makedirs(os.path.dirname(dirname), exist_ok=True)
 
+    def _checkSourceExists(self):
+        sustained_source = SustainedAPI.vegi_esc_repo.get_source(source_name='sustained.com')
+        if not sustained_source:
+            sustained_source = SustainedAPI.vegi_esc_repo.add_source(new_source=ESCSourceSql(
+                name='sustained.com',
+                domain='sustained.com',
+                source_type='api',
+                credibility=1,
+            ))
+        self.sustained_source = sustained_source
+        return sustained_source
+    
+    def get_sustained_escsource(self):
+        self._checkSourceExists()
+        return self.sustained_source
+    
     def _fetchCategories(self):
         url = "https://api.sustained.com/choice/v1/categories"
         print(f'GET -> "{url}"')
         response = requests.get(url, headers=self.headers)
         sustainedCategoriesList = SustainedCategoriesList.fromJson(response.json())
         categories = sustainedCategoriesList.categories
-        cachedItem = CachedItem(
+        cachedItem = CachedItemSql(
             item_name="sustained_categories_list",
             item_type="category_list",
             item_source="sustained.com",
             item_json=jsons.dumps([category.toJson() for category in categories]),
+            ttl_days=30,
+            created_on=datetime.now()
         )
         SustainedAPI.vegi_esc_repo.add_cached_items(items=[cachedItem])
         # self.useLocalStorage()
@@ -75,7 +101,7 @@ class SustainedAPI:
                 products += responseData.products
             else:
                 break
-        item = CachedItem(
+        item = CachedItemSql(
             item_name=category.name,
             item_type="category",
             item_source="sustained.com",
@@ -127,10 +153,20 @@ class SustainedAPI:
                 sourceProductRated=productsExplained
             )
         )
+        sustained_source = self._checkSourceExists()
+        for e in productsExplainedForVegiDB.explanations:
+            e.source = sustained_source.id
+
         self.vegi_esc_repo.add_rating(
-            new_rating=productsExplainedForVegiDB.rating,
+            new_rating=ESCRatingSql(
+                product_name=productsExplainedForVegiDB.rating.product_name,
+                product_id=productsExplainedForVegiDB.rating.product_id,
+                calculated_on=productsExplainedForVegiDB.rating.calculated_on,
+                rating=productsExplainedForVegiDB.rating.rating,
+            ),
             explanations=productsExplainedForVegiDB.explanations,
         )
+        
         return productsExplainedForVegiDB
 
     def get_localstorage_fn(self, category_id: str):
@@ -139,6 +175,7 @@ class SustainedAPI:
     def refresh_products_lists(
         self, category_name: str = "", refresh_categories: bool = False
     ):
+        self._checkSourceExists()
         if refresh_categories:
             categories = self._fetchCategories()
             # with open('sustained.json','w') as f:
@@ -265,8 +302,8 @@ class SustainedAPI:
 
 if __name__ == "__main__":
     # check functions work
-
-    ss = SustainedAPI()
+    app, vegi_db_session = create_app(None)
+    ss = SustainedAPI(app=app)
     yoghurts = ss.get_products(category_name="yoghurts")
     print(yoghurts)
     exit(0)

@@ -1,8 +1,11 @@
 # manage.py
+# i.e. conda run python -m vegi_esc_api.manage.py reset_db
+# i.e. PYTHONPATH=/Users/joey/Github_Keep/vegi-esc-api/:/Users/joey/Github_Keep/vegi-esc-api/src/:/Users/joey/Github_Keep/vegi-esc-api/src/vegi_esc_api/: python src/vegi_esc_api/manage.py reset_db
 
 from vegi_esc_api.create_app import create_app
 from vegi_esc_api.extensions import db
-from vegi_esc_api.models import ESCSource, ESCRating, ESCExplanation, CachedItem, User
+from vegi_esc_api.models import ESCSource, ESCRating, ESCExplanation, User
+from vegi_esc_api.vegi_esc_repo import CachedItemSql, ESCRatingSql, ESCExplanationSql, ESCSourceSql
 from vegi_esc_api.models_wrapper import CachedSustainedItemCategory
 from vegi_esc_api.sustained_models import SustainedCategory, SustainedProductBase
 from flask.cli import FlaskGroup
@@ -12,8 +15,13 @@ from werkzeug.security import generate_password_hash
 import jsons
 import json
 
-app = create_app()
-cli = FlaskGroup(create_app=create_app)
+
+def _create_app():
+    app, vegi_db_session = create_app()
+    return app
+
+
+cli = FlaskGroup(create_app=_create_app)
 
 
 def check_password(password_hash, password):
@@ -23,19 +31,25 @@ def check_password(password_hash, password):
 @cli.command('populate_db')
 def populate_db():
     "populate reseted database"
-    user = User(username='joeyd', password_hash=generate_password_hash('joeyd'))
-    db.session.add(user)
-    print("User created. User id={}".format(user.id))
+    # user = User(username='joeyd', password_hash=generate_password_hash('joeyd'))
+    # db.session.add(user)
+    # print("User created. User id={}".format(user.id))
 
-    source = ESCSource(name="Napolina", source_type="Website", domain="https://napolina.com/", credibility=0)
+    source = ESCSourceSql(name="Napolina", source_type="Website", domain="https://napolina.com/", credibility=0)
     db.session.add(source)
+    db.session.commit()
+    db.session.refresh(source)
+    assert source.id is not None
     print("ESCSource created. ESCSource id={}".format(source.id))
 
-    rating = ESCRating(product_name="Cannellini beans", product_id="ABC123", rating=4.5, calculated_on=datetime.now())
+    rating = ESCRatingSql(product_name="Cannellini beans", product_id="ABC123", rating=4.5, calculated_on=datetime.now())
     db.session.add(rating)
+    db.session.commit()
+    db.session.refresh(rating)
+    assert rating.id is not None
     print("ESCRating created. ESCRating id={}".format(rating.id))
 
-    explanation1 = ESCExplanation(
+    explanation1 = ESCExplanationSql(
         title="Packaging material",
         reasons=["aluminium can is widely recycled including from within general waste"],
         evidence="look at the can...",
@@ -43,7 +57,7 @@ def populate_db():
         rating=rating.id,
         source=source.id,
     )
-    explanation2 = ESCExplanation(
+    explanation2 = ESCExplanationSql(
         title="vegetarian",
         reasons=["pulses are vegetarian and sustainable source of protein"],
         evidence="look at the can...",
@@ -79,7 +93,7 @@ def populate_sustained_from_localstorage():
             raise Exception("sustainedLocalData should hold a list of products")
         products = [SustainedProductBase.fromJson(c) for c in productsObjs]
         # return [c['name'] for c in products]
-        cachedItem = CachedItem(
+        cachedItem = CachedItemSql(
             item_name=category.name,
             item_type='category',
             item_source='sustained.com',
