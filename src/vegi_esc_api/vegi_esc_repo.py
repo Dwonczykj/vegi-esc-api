@@ -4,7 +4,6 @@ from typing import Any, Callable, Self
 from vegi_esc_api.vegi_esc_repo_models import ESCSourceSql, ESCRatingSql, CachedItemSql, ESCExplanationSql, ESCProductSql, ESC_DB_NAMED_BIND
 from vegi_esc_api.repo_models_base import appcontext
 from vegi_esc_api.models import ESCSourceInstance, ESCExplanationCreate, ESCRatingInstance, ESCExplanationInstance, ESCProductInstance
-from vegi_esc_api.sustained import SustainedAPI
 import vegi_esc_api.logger as logger
 from vegi_esc_api.extensions import db
 from sqlalchemy import asc, desc, or_, and_
@@ -15,6 +14,8 @@ from flask import Flask
 import jsons
 
 from vegi_esc_api.models_wrapper import CachedSustainedItemCategory
+
+SUSTAINED_DOMAIN_NAME = 'sustained.com'
 
 
 @dataclass
@@ -81,40 +82,7 @@ class Vegi_ESC_Repo:
         except Exception as e:
             logger.error(str(e))
             return None
-        
-    @appcontext
-    def add_rating_for_product(
-        self,
-        # product_id: int,
-        new_rating: ESCRatingSql,
-        explanations: list[ESCExplanationSql],
-    ):
-        # rating = ESCRating(product_name="Cannellini beans", product_id="ABC123", calculated_on=datetime.now())
-        # Dont assert below, we want to add raitngs for products using the ratings of similar products from ssutained.
-        # assert new_rating.product == product_id, "Cannot add new rating for non-matching product_id parameter"
-        try:
-            Vegi_ESC_Repo.db_session.add(new_rating)
-            Vegi_ESC_Repo.db_session.commit()
-            Vegi_ESC_Repo.db_session.refresh(new_rating)
-            for explanation in explanations:
-                explanation.rating = new_rating.id
-                assert (
-                    new_rating.id is not None
-                ), "a new ESC rating in vegi_repo cannot have null rating id"
-                Vegi_ESC_Repo.db_session.add(explanation)
-
-            Vegi_ESC_Repo.db_session.commit()
-            # VegiRepo.db_session.refresh(explanations)
-            # logger.verbose(
-            #     f"ESCRating created with {len(explanations)} explanations. ESCRating id={new_rating.id}"
-            # )
-            return NewRating(
-                rating=new_rating.fetch(), explanations=[e.fetch() for e in explanations]
-            )
-        except Exception as e:
-            logger.error(e)
-            return None
-        
+            
     @appcontext
     def get_esc_product(
         self,
@@ -160,33 +128,37 @@ class Vegi_ESC_Repo:
             .first()
         )
         if dataProduct is None:
+            try:
+                new_esc_product = ESCProductSql(
+                    # all params from args to function.
+                    name=name,
+                    product_external_id_on_source=product_external_id_on_source,
+                    source=source,
+                    description=description,
+                    category=category,
+                    keyWords=keyWords,
+                    imageUrl=imageUrl,
+                    ingredients=ingredients,
+                    packagingType=packagingType,
+                    stockUnitsPerProduct=int(stockUnitsPerProduct),
+                    sizeInnerUnitValue=float(sizeInnerUnitValue),
+                    sizeInnerUnitType=sizeInnerUnitType,
+                    productBarCode=productBarCode,
+                    supplier=supplier,
+                    brandName=brandName,
+                    origin=origin,
+                    taxGroup=taxGroup,
+                    dateOfBirth=dateOfBirth,
+                )
             
-            new_esc_product = ESCProductSql(
-                # all params from args to function.
-                name=name,
-                product_external_id_on_source=product_external_id_on_source,
-                source=source,
-                description=description,
-                category=category,
-                keyWords=keyWords,
-                imageUrl=imageUrl,
-                ingredients=ingredients,
-                packagingType=packagingType,
-                stockUnitsPerProduct=stockUnitsPerProduct,
-                sizeInnerUnitValue=sizeInnerUnitValue,
-                sizeInnerUnitType=sizeInnerUnitType,
-                productBarCode=productBarCode,
-                supplier=supplier,
-                brandName=brandName,
-                origin=origin,
-                taxGroup=taxGroup,
-                dateOfBirth=dateOfBirth,
-            )
-            db.session.add(new_esc_product)
-            db.session.commit()
-            db.session.refresh(new_esc_product)
-            logger.verbose(f"ESCProduct created. ESCProduct.id={new_esc_product.id}")
-            dataProduct = new_esc_product
+                db.session.add(new_esc_product)
+                db.session.commit()
+                db.session.refresh(new_esc_product)
+                logger.verbose(f"ESCProduct created. ESCProduct.id={new_esc_product.id}")
+                dataProduct = new_esc_product
+            except Exception as e:
+                logger.error(e)
+                return None
         return dataProduct.fetch()
     
     # @appcontext
@@ -292,7 +264,7 @@ class Vegi_ESC_Repo:
     #     ]
 
     @appcontext
-    def get_items(self, item_source: str) -> list[ESCProductInstance]:
+    def get_items(self, item_source: str, category_name: str) -> list[ESCProductInstance]:
         # items_expire_after = datetime.now()
         try:
             source: ESCSourceSql | None = (
@@ -305,7 +277,7 @@ class Vegi_ESC_Repo:
                 return []
             items: list[ESCProductSql] = (
                 ESCProductSql.query
-                .filter(ESCProductSql.source == source.id)
+                .filter(and_(ESCProductSql.source == source.id, ESCProductSql.category == category_name))
                 .all()
             )
             assert isinstance(items, list)
@@ -337,11 +309,11 @@ class Vegi_ESC_Repo:
 
     @appcontext
     def get_sustained_categories(self):
-        return self.get_categories(item_source=SustainedAPI.DOMAIN_NAME)
+        return self.get_categories(item_source=SUSTAINED_DOMAIN_NAME)
         
     @appcontext
-    def get_sustained_items(self):
-        return self.get_items(item_source=SustainedAPI.DOMAIN_NAME)
+    def get_sustained_items(self, category_name: str):
+        return self.get_items(item_source=SUSTAINED_DOMAIN_NAME, category_name=category_name)
         # if not categories_with_products_embedded:
         #     return []
         # # return [
@@ -365,30 +337,78 @@ class Vegi_ESC_Repo:
         db.session.refresh(new_source)
         return new_source.fetch()
 
-    @appcontext
-    def add_rating(self, new_rating: ESCRatingSql, explanations: list[ESCExplanationCreate]):
-        # rating = ESCRating(product_name="Cannellini beans", product_id="ABC123", calculated_on=datetime.now())
-        db.session.add(new_rating)
-        db.session.commit()
-        db.session.refresh(new_rating)
-        assert new_rating.id is not None, 'a new ESC rating in vegi_esc_repo cannot have null rating id'
-        for explanation in explanations:
-            explanation.rating = new_rating.id
-            db.session.add(ESCExplanationSql(
-                title=explanation.title,
-                measure=explanation.measure,
-                reasons=explanation.reasons,
-                evidence=explanation.evidence,
-                rating=new_rating.id,
-                source=explanation.source,
-            ))
+    # @appcontext
+    # def add_rating(
+    #     self,
+    #     new_rating: ESCRatingSql,
+    #     explanations: list[ESCExplanationCreate],
+    #     source: int
+    # ):
+    #     # rating = ESCRating(product_name="Cannellini beans", product_id="ABC123", calculated_on=datetime.now())
+    #     db.session.add(new_rating)
+    #     db.session.commit()
+    #     db.session.refresh(new_rating)
+    #     assert new_rating.id is not None, 'a new ESC rating in vegi_esc_repo cannot have null rating id'
+    #     for explanation in explanations:
+    #         db.session.add(ESCExplanationSql(
+    #             title=explanation.title,
+    #             measure=explanation.measure,
+    #             reasons=explanation.reasons,
+    #             evidence=explanation.evidence,
+    #             rating=new_rating.id,
+    #             source=source,
+    #         ))
 
-        db.session.commit()
-        logger.verbose(
-            f"ESCRating created with {len(explanations)} explanations. ESCRating id={new_rating.id}"
-        )
+    #     db.session.commit()
+    #     logger.verbose(
+    #         f"ESCRating created with {len(explanations)} explanations. ESCRating id={new_rating.id}"
+    #     )
         
-        return new_rating.fetch()
+    #     return new_rating.fetch()
+    
+    @appcontext
+    def add_rating_for_product(
+        self,
+        # product_id: int,
+        new_rating: ESCRatingSql,
+        explanationsCreate: list[ESCExplanationCreate],
+        source: int,
+    ):
+        # rating = ESCRating(product_name="Cannellini beans", product_id="ABC123", calculated_on=datetime.now())
+        # Dont assert below, we want to add raitngs for products using the ratings of similar products from ssutained.
+        # assert new_rating.product == product_id, "Cannot add new rating for non-matching product_id parameter"
+        try:
+            Vegi_ESC_Repo.db_session.add(new_rating)
+            Vegi_ESC_Repo.db_session.commit()
+            Vegi_ESC_Repo.db_session.refresh(new_rating)
+            explanations = [
+                ESCExplanationSql(
+                    title=e.title,
+                    measure=e.measure,
+                    reasons=e.reasons,
+                    evidence=e.evidence,
+                    rating=new_rating.id,
+                    source=source
+                )
+                for e in explanationsCreate
+            ]
+            for explanation in explanations:
+                assert (
+                    new_rating.id is not None
+                ), "a new ESC rating in vegi_repo cannot have null rating id"
+                Vegi_ESC_Repo.db_session.add(explanation)
+
+            Vegi_ESC_Repo.db_session.commit()
+            # VegiRepo.db_session.refresh(explanations)
+            # logger.verbose(
+            #     f"ESCRating created with {len(explanations)} explanations. ESCRating id={new_rating.id}"
+            # )
+            return NewRating(
+                rating=new_rating.fetch(), explanations=[e.fetch() for e in explanations]
+            )
+        except Exception as e:
+            logger.error(e)
+            return None
 
     @appcontext
     def add_cached_items(self, items: list[CachedItemSql]):

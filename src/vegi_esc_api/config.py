@@ -13,6 +13,7 @@ class Config(object):
     DEBUG = False
     TESTING = False
     CSRF_ENABLED = True
+    SECRET_KEY = config['vegi_service_user_secret']
     # SQLALCHEMY_DATABASE_URI = 'postgresql://pg_user:pg_pwd@pg_server/pg_db'
     SQLALCHEMY_DATABASE_URI = _defaultUri
     SQLALCHEMY_BINDS = {

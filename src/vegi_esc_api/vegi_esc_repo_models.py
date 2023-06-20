@@ -94,11 +94,11 @@ class ESCSourceSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
     _credibility: GColumn[float] = Column("credibility", Float)
 
     def __init__(self, name: str, source_type: str, domain: str, credibility: float, id: int | None = None):
-        self.id = id
-        self.name = name
-        self.source_type = source_type
-        self.domain = domain
-        self.credibility = credibility
+        self._id = id
+        self._name = name
+        self._source_type = source_type
+        self._domain = domain
+        self._credibility = credibility
 
     def __repr__(self):
         return f"<id {self.id}; name {self.name}>"
@@ -148,7 +148,7 @@ class ESCRatingProto(Protocol):
     
 
 @dataclass
-class ESCRatingSql(db.Model, _DBDataClassJsonWrapped, CreateESCRating, _DBFetchable):
+class ESCRatingSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
     __tablename__ = "escrating"
 
     # add property setters, getters of underlying value type
@@ -216,14 +216,12 @@ class ESCRatingSql(db.Model, _DBDataClassJsonWrapped, CreateESCRating, _DBFetcha
     def __init__(
         self, product: int, product_name: str, product_id: str, rating: float, calculated_on: datetime, id: int | None = None
     ):
-        super().__init__(
-            product=product,
-            product_name=product_name,
-            product_id=product_id,
-            rating=rating,
-            calculated_on=calculated_on,
-        )
-        self.id = id
+        self._id = id
+        self._product = product
+        self._product_name = product_name
+        self._product_id = product_id
+        self._rating = rating
+        self._calculated_on = calculated_on
 
     def __repr__(self):
         return f"{type(self).__name__}<id {self.id}; product_name {self.product_name}>"
@@ -343,13 +341,13 @@ class ESCExplanationSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
         source: int,
         id: int | None = None,
     ):
-        self.id = id
-        self.title = title
-        self.measure = measure
-        self.reasons = reasons
-        self.evidence = evidence
-        self.rating = rating
-        self.source = source
+        self._id = id
+        self._title = title
+        self._measure = measure
+        self._reasons = reasons
+        self._evidence = evidence
+        self._rating = rating
+        self._source = source
 
     def __repr__(self):
         return f"{type(self).__name__}<id {self.id}; title {self.title}>"
@@ -476,14 +474,14 @@ class CachedItemSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
         created_on: datetime = datetime.now(),
         id: int | None = None,
     ):
-        self.id = id
-        self.item_name = item_name
-        self.item_type = item_type
-        self.item_source = item_source
-        self.item_json = item_json
-        self.created_on = created_on
-        self.ttl_days = ttl_days
-        self.expires_on = self.created_on + timedelta(days=ttl_days)
+        self._id = id
+        self._item_name = item_name
+        self._item_type = item_type
+        self._item_source = item_source
+        self._item_json = item_json
+        self._created_on = created_on
+        self._ttl_days = ttl_days
+        self._expires_on = self._created_on + timedelta(days=ttl_days)
 
     def __repr__(self):
         return f"{type(self).__name__}<id {self.id}; item_name {self.item_name} [{self.item_type}]>"
@@ -742,25 +740,26 @@ class ESCProductSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
         dateOfBirth: datetime,
         id: int | None = None,
     ):
-        self.id = id
-        self.name = name
-        self.product_external_id_on_source = product_external_id_on_source,
-        self.source = source,
-        self.description = description,
-        self.category = category,
-        self.keyWords = keyWords,
-        self.imageUrl = imageUrl,
-        self.ingredients = ingredients,
-        self.packagingType = packagingType,
-        self.stockUnitsPerProduct = stockUnitsPerProduct,
-        self.sizeInnerUnitValue = sizeInnerUnitValue,
-        self.sizeInnerUnitType = sizeInnerUnitType,
-        self.productBarCode = productBarCode,
-        self.supplier = supplier,
-        self.brandName = brandName,
-        self.origin = origin,
-        self.taxGroup = taxGroup,
-        self.dateOfBirth = dateOfBirth,
+        if id:
+            self._id = id
+        self._name = name
+        self._product_external_id_on_source = product_external_id_on_source
+        self._source = source
+        self._description = description
+        self._category = category
+        self._keyWords = keyWords
+        self._imageUrl = imageUrl
+        self._ingredients = ingredients
+        self._packagingType = packagingType
+        self._stockUnitsPerProduct = stockUnitsPerProduct
+        self._sizeInnerUnitValue = sizeInnerUnitValue
+        self._sizeInnerUnitType = sizeInnerUnitType
+        self._productBarCode = productBarCode
+        self._supplier = supplier
+        self._brandName = brandName
+        self._origin = origin
+        self._taxGroup = taxGroup
+        self._dateOfBirth = dateOfBirth
 
     def __repr__(self):
         return f"{type(self).__name__}<id {self.id}; item_name {self.item_name} [{self.item_type}]>"

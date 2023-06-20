@@ -37,6 +37,7 @@ def append_list(sim_words, words):
 
     return list_of_words
 
+
 def get_word_vectors(
     words=None,
     sample=10,
@@ -378,7 +379,7 @@ def update_figure(
             result_word.extend(sim_words)
 
         similar_word = [word[0] for word in result_word]
-        similarity = [word[1] for word in result_word]
+        # similarity = [word[1] for word in result_word]
         similar_word.extend(user_input)
         labels = [word[2] for word in result_word]
         label_dict = dict([(y, x + 1) for x, y in enumerate(set(labels))])

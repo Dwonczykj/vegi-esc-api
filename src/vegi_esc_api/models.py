@@ -590,8 +590,8 @@ class ESCExplanation:
     measure: float
     reasons: list[str]
     evidence: str
-    rating: int
-    source: int
+    # rating: int
+    # source: int
 
 
 @dataclass

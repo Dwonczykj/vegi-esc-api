@@ -11,22 +11,20 @@ from collections import defaultdict
 from vegi_esc_api.models_wrapper import ESCRatingExplainedResult
 from vegi_esc_api.vegi_repo import (
     VegiRepo,
-    VegiESCRatingSql,
 )
 from vegi_esc_api.vegi_esc_repo import (
     Vegi_ESC_Repo,
     ESCRatingSql,
-    ESCExplanationSql,
     NewRating,
 )
 from vegi_esc_api.sustained import SustainedAPI
 from vegi_esc_api.create_app import create_app
-from vegi_esc_api.models import ESCProductInstance, ServerError
+from vegi_esc_api.models import ESCProductInstance, ESCExplanationCreate, ServerError
 from vegi_esc_api.logger import LogLevel, slow_call_timer
 import vegi_esc_api.logger as logger
 from vegi_esc_api.word_vec_model import getModel
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import redirect, url_for, request, Flask
 import pickle
 import base64
@@ -70,13 +68,22 @@ def login():
 
 
 @slow_call_timer
-@server.route("/product/<id>")
-def product(id: int):
-    product = None
+@server.route("/rating/<id>")
+def rating(id: str):
+    rating = None
 
-    repoConn = VegiRepo(app=server)
-    product = repoConn.get_products_to_rate(id)
-    return json.dumps(product)
+    repoConn = Vegi_ESC_Repo(app=server)
+    r_id = int(id)
+    rating = repoConn.get_rating(
+        rating_id=r_id,
+        since_time_delta=timedelta(days=5)
+    )
+    if not rating:
+        return json.dumps(ServerError(
+            message='Rating not found for id',
+            code='NOT_FOUND'
+        ))
+    return json.dumps(rating.serialize())
 
 
 @slow_call_timer
@@ -113,22 +120,30 @@ def rate_product(
     )
     if esc_product:
         # TODO: Rate the existing product and return
-        new_rating = _rate_product(
+        new_rating, most_similar_esc_product = _rate_product(
             product_name=esc_product.name,
             product_category_name=esc_product.category,
             product_names_in_same_category=[],
         )
         if not new_rating:
             return json.dumps({})
-        return json.dumps(new_rating.serialize())
-    new_rating = _rate_product(
+        return json.dumps({
+            'product': esc_product.serialize(),
+            'most_similar_esc_product': most_similar_esc_product.serialize(),
+            **new_rating.serialize(),
+        })
+    new_rating, most_similar_esc_product = _rate_product(
         product_name=name,
         product_category_name=category,
         product_names_in_same_category=[],
     )
     if not new_rating:
         return json.dumps({})
-    return json.dumps(new_rating.serialize())
+    return json.dumps({
+        'product': name,
+        'most_similar_esc_product': most_similar_esc_product.serialize(),
+        **new_rating.serialize(),
+    })
     # product = escRepoConn.add_product_if_not_exists(
     #     name=name,
     #     product_external_id_on_source=product_external_id_on_source,
@@ -156,11 +171,15 @@ def rate_product(
 @slow_call_timer
 @server.route("/rate-vegi-product/<id>")
 def rate_vegi_product(id: str):
-    new_rating = _rate_vegi_product(id=int(id))
-    if new_rating is None:
+    product, new_rating, most_similar_esc_product = _rate_vegi_product(id=int(id))
+    if new_rating is None or product is None:
         return json.dumps({})
     
-    return json.dumps(new_rating.serialize())
+    return json.dumps({
+        'product': product.serialize(),
+        'most_similar_esc_product': most_similar_esc_product.serialize(),
+        'new_rating': new_rating.serialize()
+    })
 
 
 def _rate_vegi_product(id: int):
@@ -173,113 +192,16 @@ def _rate_vegi_product(id: int):
     # NOTE Get the product and all other products in same category from vegi repo
     # NOTE So similarity checks of all product names in same cat and category name with higher weight in weighted average to get most similar sustained category
     if not products_in_category or not category or not product:
-        return ServerError(
+        return None, None, ServerError(
             message="no products matched for id",
             code="PRODUCT_NOT_FOUND"
         )
-        # return json.dumps(
-        #     {"message": "no products matched for id", "code": "PRODUCT_NOT_FOUND"}
-        # )
-       
-    # esc_product = escRepoConn.add_product_if_not_exists(
-    #     name=product.name,
-    #     product_external_id_on_source=product.p,
-    #     source='vegi',
-    #     description=product.description,
-    #     category=category.name,
-    #     keyWords=[],
-    #     imageUrl='',
-    #     ingredients=product.ingredients,
-    #     packagingType='',
-    #     stockUnitsPerProduct=product.stockUnitsPerProduct,
-    #     sizeInnerUnitValue=product.sizeInnerUnitValue,
-    #     sizeInnerUnitType=product.sizeInnerUnitType,
-    #     productBarCode=product.productBarCode,
-    #     supplier=product.supplier,
-    #     brandName=product.brandName,
-    #     origin='',
-    #     finalLocation='',
-    #     taxGroup=product.taxGroup,
-    #     dateOfBirth=datetime.now(),
-    #     finalDate=datetime.now(),
-    # )
-    
-    # ss = SustainedAPI(app=server)
-    # sustained_escsource = ss.get_sustained_escsource()
-    
-    # n = float(len(products_in_category))
-    
-    # # * find most similar product in sustained
-    # # store the distance from the category matched in teh below function too
-    # most_sim_cats_to_category_map = _sustained_most_similar_category_id_spaced_map(
-    #     category.name
-    # )
-    # # cat = ss.get_cat_for_space_delimited_id(most_sim_cat_id, replace=("-", " "))
-    # category_weight = 0.4
-    # # product_weight = 1 - category_weight
-    # # _average_wmds_for_sustained_cats = {
-    # #     sustained_cat: category_weight * cat_cat_wmd
-    # #     for sustained_cat, cat_cat_wmd in most_sim_cats_to_category_map.items()
-    # # }
-    # _averages: dict[str, dict[str, float]] = {}
-    # for i, product in enumerate(products_in_category):
-    #     # progress_percent = i / n
-    #     _averages[product.name] = _sustained_most_similar_category_id_spaced_map(
-    #         product.name
-    #     )
-
-    # _sscat_id_name_to_prod_avg_wmd: defaultdict[str, float] = defaultdict(float)
-    # for product_name in _averages.keys():
-    #     for ss_cat_id_sp in _averages[product_name]:
-    #         if ss_cat_id_sp not in _sscat_id_name_to_prod_avg_wmd.keys():
-    #             _sscat_id_name_to_prod_avg_wmd[ss_cat_id_sp] = 0.0
-    #         _sscat_id_name_to_prod_avg_wmd[ss_cat_id_sp] += (
-    #             _averages[product_name][ss_cat_id_sp] / n
-    #         )
-    # _sscat_id_name_to_avg_wmd: dict[str, float] = {}
-    # for sscat_name in _sscat_id_name_to_prod_avg_wmd.keys():
-    #     _sscat_id_name_to_avg_wmd[sscat_name] = (
-    #         _sscat_id_name_to_prod_avg_wmd[sscat_name] * (1 - category_weight)
-    #         + most_sim_cats_to_category_map[sscat_name] * category_weight
-    #     )
-    # most_sim_v = min([v for v in _sscat_id_name_to_avg_wmd.values()])
-    # most_similar_ss_cat_id_spaced = next(
-    #     (k for k, v in _sscat_id_name_to_avg_wmd.items() if v == most_sim_v)
-    # )
-    
-    # # * Then match most similar product in that category same as already done and use its rating for now
-    # most_similar_ss_product_result = (
-    #     _sustained_most_similar_product_for_ss_cat_space_delimited_id(
-    #         search_product_name=product.name, most_sim_cat_id=most_similar_ss_cat_id_spaced
-    #     )
-    # )
-    # esc_product = most_similar_ss_product_result._sustainedProduct
-    # new_rating = escRepoConn.add_rating_for_product(
-    #     # product_id=p_id,
-    #     new_rating=ESCRatingSql(
-    #         product=esc_product.id,
-    #         product_id=most_similar_ss_product_result.rating.product_id,
-    #         product_name=most_similar_ss_product_result.rating.product_name,
-    #         rating=most_similar_ss_product_result.rating.rating,
-    #         calculated_on=most_similar_ss_product_result.rating.calculated_on,
-    #     ),
-    #     explanations=[
-    #         ESCExplanationSql(
-    #             title=f"Proxy from similar product [{most_similar_ss_product_result._sustainedProduct.name}]: {e.title}",
-    #             measure=e.measure,
-    #             reasons=e.reasons,
-    #             evidence=e.evidence,
-    #             rating=e.rating,
-    #             source=sustained_escsource.id,
-    #         )
-    #         for e in most_similar_ss_product_result.explanations
-    #     ],
-    # )
-    return _rate_product(
+    new_rating, most_similar_esc_product = _rate_product(
         product_name=product.name,
         product_category_name=category.name,
         product_names_in_same_category=[p.name for p in products_in_category]
     )
+    return product, new_rating, most_similar_esc_product
 
 
 def _find_similar_rated_product(
@@ -361,19 +283,18 @@ def _rate_product(
             rating=most_similar_ss_product_result.rating.rating,
             calculated_on=most_similar_ss_product_result.rating.calculated_on,
         ),
-        explanations=[
-            ESCExplanationSql(
+        explanationsCreate=[
+            ESCExplanationCreate(
                 title=f"Proxy from similar product [{most_similar_ss_product_result._sustainedProduct.name}]: {e.title}",
                 measure=e.measure,
                 reasons=e.reasons,
                 evidence=e.evidence,
-                rating=e.rating,
-                source=sustained_escsource.id,
             )
             for e in most_similar_ss_product_result.explanations
         ],
+        source=sustained_escsource.id
     )
-    return new_rating
+    return new_rating, esc_product
 
 
 @slow_call_timer
