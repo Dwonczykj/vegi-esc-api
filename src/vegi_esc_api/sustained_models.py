@@ -2,6 +2,7 @@ from vegi_esc_api.json_class_helpers import DataClassJsonWrapped
 from dataclasses import dataclass
 from typing import Generic, Literal, Any, Optional, TypeVar
 import jsons
+from vegi_esc_api.models import ESCProductInstance
 
 
 @dataclass
@@ -58,8 +59,8 @@ class SustainedCategoriesListLinks(DataClassJsonWrapped):
 @dataclass
 class SustainedCategory:
     id: str
-    name: str
     links: SustainedCategoryLinks
+    name: str
 
     @classmethod
     def fromJson(cls, obj: Any):
@@ -119,6 +120,7 @@ TP = TypeVar("TP", SustainedProductsResultItem, SustainedSingleProductResult)
 @dataclass
 class SustainedProductExplained(Generic[TP], DataClassJsonWrapped):
     product: SustainedProductBase
+    db_product: ESCProductInstance
     impacts: list[SustainedImpact]
 
 

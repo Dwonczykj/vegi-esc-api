@@ -9,7 +9,7 @@ import cachetools.func
 from vegi_esc_api.create_app import create_app
 
 import vegi_esc_api.logger as logger
-# from vegi_esc_api.models import 
+from vegi_esc_api.models import ESCProductInstance
 from vegi_esc_api.models_wrapper import CachedSustainedItemCategory
 from vegi_esc_api.sustained_mapper import SustainedVegiMapper
 from vegi_esc_api.sustained_models import SustainedCategoriesList, SustainedCategory, SustainedImpact, SustainedImpactsList, SustainedProductBase, SustainedProductExplained, SustainedProductsList, SustainedSingleProductResult
@@ -22,6 +22,7 @@ from datetime import datetime
 class SustainedAPI:
     headers = {"accept": "application/json"}
     sustained_to_vegi_mapper = SustainedVegiMapper()
+    DOMAIN_NAME = "sustained.com"
 
     def __init__(self, app: Flask) -> None:
         SustainedAPI.app = app
@@ -41,11 +42,11 @@ class SustainedAPI:
             os.makedirs(os.path.dirname(dirname), exist_ok=True)
 
     def _checkSourceExists(self):
-        sustained_source = SustainedAPI.vegi_esc_repo.get_source(source_name='sustained.com')
+        sustained_source = SustainedAPI.vegi_esc_repo.get_source(source_name=SustainedAPI.DOMAIN_NAME)
         if not sustained_source:
             sustained_source = SustainedAPI.vegi_esc_repo.add_source(new_source=ESCSourceSql(
-                name='sustained.com',
-                domain='sustained.com',
+                name=SustainedAPI.DOMAIN_NAME,
+                domain=SustainedAPI.DOMAIN_NAME,
                 source_type='api',
                 credibility=1,
             ))
@@ -65,7 +66,7 @@ class SustainedAPI:
         cachedItem = CachedItemSql(
             item_name="sustained_categories_list",
             item_type="category_list",
-            item_source="sustained.com",
+            item_source=SustainedAPI.DOMAIN_NAME,
             item_json=jsons.dumps([category.toJson() for category in categories]),
             ttl_days=30,
             created_on=datetime.now()
@@ -104,7 +105,7 @@ class SustainedAPI:
         item = CachedItemSql(
             item_name=category.name,
             item_type="category",
-            item_source="sustained.com",
+            item_source=SustainedAPI.DOMAIN_NAME,
             item_json=jsons.dumps(
                 CachedSustainedItemCategory(
                     name=category.name,
@@ -115,6 +116,29 @@ class SustainedAPI:
             ),
         )
         SustainedAPI.vegi_esc_repo.add_cached_items(items=[item])
+        for product in products:
+            SustainedAPI.vegi_esc_repo.add_product_if_not_exists(
+                name=product.name,
+                product_external_id_on_source=product.id,
+                source=self.get_sustained_escsource().id,
+                description='',
+                category=product.category,
+                keyWords=[],
+                imageUrl=product.image,
+                ingredients='',
+                packagingType=product.pack,
+                stockUnitsPerProduct=1,
+                sizeInnerUnitValue=1,
+                sizeInnerUnitType='g',
+                productBarCode='',
+                supplier='',
+                brandName='',
+                origin='',
+                finalLocation='',
+                taxGroup=product.gtin,
+                dateOfBirth=datetime.now(),
+                finalDate=datetime.now(),
+            )
         # with open(fn, 'w') as f:
         #     json.dump([r.toJson() for r in results], f, indent=2)
         # print(f'wrote cat_products to "{fn}"')
@@ -125,10 +149,32 @@ class SustainedAPI:
         url = f"https://api.sustained.com/choice/v1/products/{id}"
         print(f'GET -> "{url}"')
         response = requests.get(url, headers=self.headers)
-        singleItem = SustainedSingleProductResult.fromJson(response.json())
-        return singleItem
+        product = SustainedSingleProductResult.fromJson(response.json())
+        esc_product = SustainedAPI.vegi_esc_repo.add_product_if_not_exists(
+            name=product.name,
+            product_external_id_on_source=product.id,
+            source=self.get_sustained_escsource().id,
+            description='',
+            category=product.category,
+            keyWords=[],
+            imageUrl=product.image,
+            ingredients='',
+            packagingType=product.pack,
+            stockUnitsPerProduct=1,
+            sizeInnerUnitValue=1,
+            sizeInnerUnitType='g',
+            productBarCode='',
+            supplier='',
+            brandName='',
+            origin='',
+            finalLocation='',
+            taxGroup=product.gtin,
+            dateOfBirth=datetime.now(),
+            finalDate=datetime.now(),
+        )
+        return product, esc_product
 
-    def _fetchProductImpacts(self, product: SustainedProductBase):
+    def _fetchProductImpacts(self, product: SustainedProductBase, esc_product: ESCProductInstance):
         if not product.links.impacts:
             raise TypeError(product.links)
 
@@ -147,7 +193,7 @@ class SustainedAPI:
                 impacts += responseData.impacts
             else:
                 break
-        productsExplained = SustainedProductExplained(product=product, impacts=impacts)
+        productsExplained = SustainedProductExplained(product=product, impacts=impacts, db_product=esc_product)
         productsExplainedForVegiDB = (
             self.sustained_to_vegi_mapper.mapSustainedProductImpactsToVegi(
                 sourceProductRated=productsExplained
@@ -159,6 +205,7 @@ class SustainedAPI:
 
         self.vegi_esc_repo.add_rating(
             new_rating=ESCRatingSql(
+                product=productsExplainedForVegiDB.rating.product,
                 product_name=productsExplainedForVegiDB.rating.product_name,
                 product_id=productsExplainedForVegiDB.rating.product_id,
                 calculated_on=productsExplainedForVegiDB.rating.calculated_on,
@@ -216,7 +263,7 @@ class SustainedAPI:
     @cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)
     def get_categories(self):
         # todo replace with vegi_esc_repo.write_db
-        cats_with_products = SustainedAPI.vegi_esc_repo.get_sustained_items()
+        cats_with_products = SustainedAPI.vegi_esc_repo.get_sustained_categories()
         return [SustainedCategory.fromJson(c.toJson()) for c in cats_with_products]
         # self.useLocalStorage()
         # with open('localstorage/sustained-categories.json', 'r') as f:
@@ -231,12 +278,12 @@ class SustainedAPI:
 
     @cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)
     def get_products(self, category_name: str = ""):
-        cats_with_products = SustainedAPI.vegi_esc_repo.get_sustained_items()
-        return [
-            SustainedProductBase.fromJson(p.toJson())
-            for c in cats_with_products
-            for p in c.products
-        ]
+        products = SustainedAPI.vegi_esc_repo.get_sustained_items()
+        return products
+        # return [
+        #     SustainedProductBase.fromProductSql(p.toJson())
+        #     for p in products
+        # ]
         # categories = self.get_categories()
         # # with open('sustained.json', 'r') as f:
         # #     sustainedLocalData = json.load(f)
@@ -254,8 +301,9 @@ class SustainedAPI:
         #     return [p for c in categories for p in self._load_products_from_fn(c.id)]
 
     def get_product_with_impact(self, sustainedProductId: str):
-        product = self._fetchProduct(id=sustainedProductId)
-        productExplained = self._fetchProductImpacts(product=product)
+        product, esc_product = self._fetchProduct(id=sustainedProductId)
+        assert esc_product is not None, "esc_product cannot be None after being fetched in sustained.get_product_with_impact()"
+        productExplained = self._fetchProductImpacts(product=product, esc_product=esc_product)
         return productExplained
 
     @cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)

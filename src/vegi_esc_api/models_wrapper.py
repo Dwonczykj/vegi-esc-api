@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from vegi_esc_api.json_class_helpers import DataClassJsonWrapped
-from vegi_esc_api.models import ESCRatingCreate, ESCExplanationCreate
+from vegi_esc_api.models import ESCRatingCreate, ESCExplanationCreate, ESCProductInstance
 from vegi_esc_api.sustained_models import SustainedCategory, SustainedProductBase
 
 
@@ -16,7 +16,7 @@ class ESCRatingExplained(DataClassJsonWrapped):
 class ESCRatingExplainedResult(ESCRatingExplained):
     original_search_term: str
     wmdistance: float
-    _sustainedProduct: SustainedProductBase
+    _sustainedProduct: ESCProductInstance
 
 
 @dataclass

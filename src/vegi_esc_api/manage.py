@@ -41,8 +41,14 @@ def populate_db():
     db.session.refresh(source)
     assert source.id is not None
     print("ESCSource created. ESCSource id={}".format(source.id))
-
-    rating = ESCRatingSql(product_name="Cannellini beans", product_id="ABC123", rating=4.5, calculated_on=datetime.now())
+    # TODO: Populate a ESCProductSql with product.id=1
+    rating = ESCRatingSql(
+        product=1,
+        product_name="Cannellini beans", 
+        product_id="ABC123", 
+        rating=4.5, 
+        calculated_on=datetime.now()
+    )
     db.session.add(rating)
     db.session.commit()
     db.session.refresh(rating)

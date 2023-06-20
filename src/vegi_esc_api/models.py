@@ -46,41 +46,41 @@ def with_id(cls):
     return cls
 
 
-@dataclass
-class VegiESCSource:
-    name: str
-    source_type: str
-    domain: str
-    credibility: float
+# @dataclass
+# class VegiESCSource:
+#     name: str
+#     source_type: str
+#     domain: str
+#     credibility: float
 
 
-@dataclass
-class VegiESCSourceCreate(VegiESCSource, _DBDataClassJsonWrapped, _isCreate):
-    def __init__(self, name: str, source_type: str, domain: str, credibility: float):
-        self.name = name
-        self.source_type = source_type
-        self.domain = domain
-        self.credibility = credibility
+# @dataclass
+# class VegiESCSourceCreate(VegiESCSource, _DBDataClassJsonWrapped, _isCreate):
+#     def __init__(self, name: str, source_type: str, domain: str, credibility: float):
+#         self.name = name
+#         self.source_type = source_type
+#         self.domain = domain
+#         self.credibility = credibility
 
-    # def __repr__(self):
-    #     return f"{type(self).__name__}<name {self.name}>"
+#     # def __repr__(self):
+#     #     return f"{type(self).__name__}<name {self.name}>"
 
 
-@dataclass
-class VegiESCSourceInstance(VegiESCSource, _DBDataClassJsonWrapped, _isDBInstance):
-    def __init__(
-        self, id: int, name: str, source_type: str, domain: str, credibility: float
-    ):
-        self.id = id
-        self.name = name
-        self.source_type = source_type
-        self.domain = domain
-        self.credibility = credibility
+# @dataclass
+# class VegiESCSourceInstance(VegiESCSource, _DBDataClassJsonWrapped, _isDBInstance):
+#     def __init__(
+#         self, id: int, name: str, source_type: str, domain: str, credibility: float
+#     ):
+#         self.id = id
+#         self.name = name
+#         self.source_type = source_type
+#         self.domain = domain
+#         self.credibility = credibility
 
 
 @dataclass
 class VegiESCRating:
-    productPublicId: str
+    escRatingId: str
     rating: float
     calculatedOn: datetime
     product: int
@@ -89,9 +89,9 @@ class VegiESCRating:
 @dataclass
 class VegiESCRatingCreate(VegiESCRating, _DBDataClassJsonWrapped, _isCreate):
     def __init__(
-        self, productPublicId: str, rating: float, calculatedOn: datetime, product: int
+        self, escRatingId: str, rating: float, calculatedOn: datetime, product: int
     ):
-        self.productPublicId = productPublicId
+        self.escRatingId = escRatingId
         self.rating = rating
         self.calculatedOn = calculatedOn
         self.product = product
@@ -102,68 +102,68 @@ class VegiESCRatingInstance(VegiESCRating, _DBDataClassJsonWrapped, _isDBInstanc
     def __init__(
         self,
         id: int,
-        productPublicId: str,
+        escRatingId: str,
         rating: float,
         calculatedOn: datetime,
         product: int,
     ):
         self.id = id
-        self.productPublicId = productPublicId
+        self.escRatingId = escRatingId
         self.rating = rating
         self.calculatedOn = calculatedOn
         self.product = product
 
 
-@dataclass
-class VegiESCExplanation:
-    title: str
-    measure: float
-    reasons: list[str]
-    evidence: str
-    escrating: int
-    escsource: int
+# @dataclass
+# class VegiESCExplanation:
+#     title: str
+#     measure: float
+#     reasons: list[str]
+#     evidence: str
+#     escrating: int
+#     escsource: int
 
 
-@dataclass
-class VegiESCExplanationCreate(VegiESCExplanation, _DBDataClassJsonWrapped, _isCreate):
-    def __init__(
-        self,
-        title: str,
-        measure: float,
-        reasons: list[str],
-        evidence: str,
-        escrating: int,
-        escsource: int,
-    ):
-        self.title = title
-        self.measure = measure
-        self.reasons = reasons
-        self.evidence = evidence
-        self.escrating = escrating
-        self.escsource = escsource
+# @dataclass
+# class VegiESCExplanationCreate(VegiESCExplanation, _DBDataClassJsonWrapped, _isCreate):
+#     def __init__(
+#         self,
+#         title: str,
+#         measure: float,
+#         reasons: list[str],
+#         evidence: str,
+#         escrating: int,
+#         escsource: int,
+#     ):
+#         self.title = title
+#         self.measure = measure
+#         self.reasons = reasons
+#         self.evidence = evidence
+#         self.escrating = escrating
+#         self.escsource = escsource
 
 
-@dataclass
-class VegiESCExplanationInstance(
-    VegiESCExplanation, _DBDataClassJsonWrapped, _isDBInstance
-):
-    def __init__(
-        self,
-        id: int,
-        title: str,
-        measure: float,
-        reasons: list[str],
-        evidence: str,
-        escrating: int,
-        escsource: int,
-    ):
-        self.id = id
-        self.title = title
-        self.measure = measure
-        self.reasons = reasons
-        self.evidence = evidence
-        self.escrating = escrating
-        self.escsource = escsource
+# @dataclass
+# class VegiESCExplanationInstance(
+#     VegiESCExplanation, _DBDataClassJsonWrapped, _isDBInstance
+# ):
+#     def __init__(
+#         self,
+#         id: int,
+#         title: str,
+#         measure: float,
+#         reasons: list[str],
+#         evidence: str,
+#         escrating: int,
+#         escsource: int,
+#     ):
+#         self.id = id
+#         self.title = title
+#         self.measure = measure
+#         self.reasons = reasons
+#         self.evidence = evidence
+#         self.escrating = escrating
+#         self.escsource = escsource
 
 
 @dataclass
@@ -438,6 +438,7 @@ class ESCSourceInstance(ESCSource, _DBDataClassJsonWrapped, _isDBInstance):
 
 
 class ESCRating:
+    product: int
     product_name: str
     product_id: str
     rating: float
@@ -447,8 +448,9 @@ class ESCRating:
 @dataclass
 class ESCRatingCreate(ESCRating, _DBDataClassJsonWrapped, _isCreate):
     def __init__(
-        self, product_name: str, product_id: str, rating: float, calculated_on: datetime
+        self, product: int, product_name: str, product_id: str, rating: float, calculated_on: datetime
     ):
+        self.product = product
         self.product_name = product_name
         self.product_id = product_id
         self.rating = rating
@@ -460,16 +462,127 @@ class ESCRatingInstance(ESCRating, _DBDataClassJsonWrapped, _isDBInstance):
     def __init__(
         self,
         id: int,
+        product: int,
         product_name: str,
         product_id: str,
         rating: float,
         calculated_on: datetime,
     ):
         self.id = id
+        self.product = product
         self.product_name = product_name
         self.product_id = product_id
         self.rating = rating
         self.calculated_on = calculated_on
+
+
+class ESCProduct:
+    name: str
+    product_external_id_on_source: str
+    source: int
+    description: str
+    category: str
+    keyWords: list[str]
+    imageUrl: str
+    ingredients: str
+    packagingType: str
+    stockUnitsPerProduct: int
+    sizeInnerUnitValue: float
+    sizeInnerUnitType: str
+    productBarCode: str
+    supplier: str
+    brandName: str
+    origin: str
+    taxGroup: str
+    dateOfBirth: datetime
+
+
+@dataclass
+class ESCProductCreate(ESCProduct, _DBDataClassJsonWrapped, _isCreate):
+    def __init__(
+        self,
+        name: str,
+        product_external_id_on_source: str,
+        source: int,
+        description: str,
+        category: str,
+        keyWords: list[str],
+        imageUrl: str,
+        ingredients: str,
+        packagingType: str,
+        stockUnitsPerProduct: int,
+        sizeInnerUnitValue: float,
+        sizeInnerUnitType: str,
+        productBarCode: str,
+        supplier: str,
+        brandName: str,
+        origin: str,
+        taxGroup: str,
+        dateOfBirth: datetime,
+    ):
+        self.name = name
+        self.product_external_id_on_source = product_external_id_on_source
+        self.source = source
+        self.description = description
+        self.category = category
+        self.keyWords = keyWords
+        self.imageUrl = imageUrl
+        self.ingredients = ingredients
+        self.packagingType = packagingType
+        self.stockUnitsPerProduct = stockUnitsPerProduct
+        self.sizeInnerUnitValue = sizeInnerUnitValue
+        self.sizeInnerUnitType = sizeInnerUnitType
+        self.productBarCode = productBarCode
+        self.supplier = supplier
+        self.brandName = brandName
+        self.origin = origin
+        self.taxGroup = taxGroup
+        self.dateOfBirth = dateOfBirth
+
+
+@dataclass
+class ESCProductInstance(ESCProduct, _DBDataClassJsonWrapped, _isDBInstance):
+    def __init__(
+        self,
+        id: int,
+        name: str,
+        product_external_id_on_source: str,
+        source: int,
+        description: str,
+        category: str,
+        keyWords: list[str],
+        imageUrl: str,
+        ingredients: str,
+        packagingType: str,
+        stockUnitsPerProduct: int,
+        sizeInnerUnitValue: float,
+        sizeInnerUnitType: str,
+        productBarCode: str,
+        supplier: str,
+        brandName: str,
+        origin: str,
+        taxGroup: str,
+        dateOfBirth: datetime,
+    ):
+        self.id = id
+        self.name = name
+        self.product_external_id_on_source = product_external_id_on_source
+        self.source = source
+        self.description = description
+        self.category = category
+        self.keyWords = keyWords
+        self.imageUrl = imageUrl
+        self.ingredients = ingredients
+        self.packagingType = packagingType
+        self.stockUnitsPerProduct = stockUnitsPerProduct
+        self.sizeInnerUnitValue = sizeInnerUnitValue
+        self.sizeInnerUnitType = sizeInnerUnitType
+        self.productBarCode = productBarCode
+        self.supplier = supplier
+        self.brandName = brandName
+        self.origin = origin
+        self.taxGroup = taxGroup
+        self.dateOfBirth = dateOfBirth
 
 
 class ESCExplanation:
@@ -572,3 +685,15 @@ class CachedItemInstance(CachedItem, _DBDataClassJsonWrapped, _isDBInstance):
         self.created_on = created_on
         self.ttl_days = ttl_days
         self.expires_on = self.created_on + timedelta(days=ttl_days)
+
+
+@dataclass
+class ServerError:
+    message: str
+    code: str
+
+    def serialize(self):
+        return {
+            'message': self.message,
+            'code': self.code,
+        }

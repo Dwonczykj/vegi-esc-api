@@ -3,40 +3,41 @@ from dataclasses import dataclass
 
 from flask import Flask
 from datetime import datetime, timedelta
-from typing import Tuple
+from typing import Tuple, NamedTuple, Any, Union
 from sqlalchemy import or_, func
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.engine.row import Row
 from vegi_esc_api.vegi_repo_models import (
-    VegiESCSourceSql,
-    VegiESCExplanationSql,
+    # VegiESCSourceSql,
+    # VegiESCExplanationSql,
     VegiESCRatingSql,
     VegiProductSql,
     VegiUserSql,
     VEGI_DB_NAMED_BIND,
     VegiProductCategorySql,
     VegiCategoryGroupSql,
+    _DBFetchable,
 )
 from vegi_esc_api.repo_models_base import appcontext
 from vegi_esc_api.models import (
     VegiESCRatingInstance,
     VegiProductInstance,
-    VegiESCExplanationInstance,
+    # VegiESCExplanationInstance,
 )
 from vegi_esc_api.extensions import db
 import vegi_esc_api.logger as logger
 
 
-@dataclass
-class NewRating:
-    rating: VegiESCRatingInstance
-    explanations: list[VegiESCExplanationInstance]
+# @dataclass
+# class NewRating:
+#     rating: VegiESCRatingInstance
+#     explanations: list[VegiESCExplanationInstance]
 
-    def serialize(self):
-        return {
-            "rating": self.rating.serialize(),
-            "explanations": [e.serialize() for e in self.explanations],
-        }
+#     def serialize(self):
+#         return {
+#             "rating": self.rating.serialize(),
+#             "explanations": [e.serialize() for e in self.explanations],
+#         }
 
 
 class VegiRepo:
@@ -65,7 +66,7 @@ class VegiRepo:
         return [e.fetch() for e in products]
 
     @appcontext
-    def get_product_category_details(self, product_id: int):
+    def get_product_category_details(self, product_id: int) -> Tuple[VegiProductInstance | None, list[VegiProductInstance] | None, VegiProductCategorySql | None]:
         dataProduct: VegiProductSql | None = (
             VegiRepo.db_session.query(VegiProductSql)
             .filter(VegiProductSql.id == product_id)
@@ -77,8 +78,7 @@ class VegiRepo:
             )
             return (None, None, None)
         dataProductsInSameCategory: list[
-            # Tuple[VegiProductSql, VegiProductCategorySql] & dict[str,Any]
-            Row
+            Union[Tuple[VegiProductSql, VegiProductCategorySql], Row]
         ] = (
             VegiRepo.db_session.query(VegiProductSql, VegiProductCategorySql)
             .join(
@@ -94,23 +94,23 @@ class VegiRepo:
             dataProductsInSameCategory[0]['VegiProductCategorySql'].fetch() if 'VegiProductCategorySql' in dataProductsInSameCategory[0].keys() else None,  # type: ignore
         )
 
-    @appcontext
-    def get_product_ratings(self, limit: int):
-        limit = max(1, int(limit))
-        # Query the joined data
-        data = (
-            VegiRepo.db_session.query(VegiESCRatingSql, VegiESCExplanationSql)
-            .join(
-                VegiESCExplanationSql,
-                VegiESCExplanationSql.escrating == VegiESCRatingSql.id,
-            )
-            .limit(limit)
-            .all()
-        )
+    # @appcontext
+    # def get_product_ratings(self, limit: int):
+    #     limit = max(1, int(limit))
+    #     # Query the joined data
+    #     data = (
+    #         VegiRepo.db_session.query(VegiESCRatingSql, VegiESCExplanationSql)
+    #         .join(
+    #             VegiESCExplanationSql,
+    #             VegiESCExplanationSql.escrating == VegiESCRatingSql.id,
+    #         )
+    #         .limit(limit)
+    #         .all()
+    #     )
 
         # Convert the result to a list of dictionaries for JSONification
         # instead return ratings objects, what is returned here atm?
-        return [(rating.fetch(), explanation.fetch()) for rating, explanation in data]
+        # return [(rating.fetch(), explanation.fetch()) for rating, explanation in data]
         # result = [
         #     {
         #         # "product_id": product.id,
@@ -130,16 +130,11 @@ class VegiRepo:
     ) -> tuple[list[VegiProductInstance], list[VegiESCRatingInstance]]:
         data = (
             VegiRepo.db_session.query(
-                VegiProductSql, VegiESCRatingSql, VegiESCExplanationSql
+                VegiProductSql, VegiESCRatingSql
             )
             .join(
                 VegiESCRatingSql,
                 VegiESCRatingSql.product == VegiProductSql.id,
-                isouter=True,
-            )
-            .join(
-                VegiESCExplanationSql,
-                VegiESCExplanationSql.escrating == VegiESCRatingSql.id,
                 isouter=True,
             )
             .filter(VegiProductSql.id.in_(ids))  # type: ignore
@@ -193,7 +188,7 @@ class VegiRepo:
         # in this query below, we need .with_entities() to use the distinct clause
         data = (
             VegiRepo.db_session.query(
-                VegiProductSql, VegiESCRatingSql, VegiESCExplanationSql
+                VegiProductSql, VegiESCRatingSql
             )
             .with_entities(VegiProductSql.id, func.max(VegiESCRatingSql.calculatedOn))
             .group_by(VegiProductSql.id)
@@ -208,11 +203,6 @@ class VegiRepo:
             .join(
                 VegiESCRatingSql,
                 VegiESCRatingSql.product == VegiProductSql.id,
-                isouter=True,
-            )
-            .join(
-                VegiESCExplanationSql,
-                VegiESCExplanationSql.escrating == VegiESCRatingSql.id,
                 isouter=True,
             )
             .order_by(func.max(VegiESCRatingSql.calculatedOn))
@@ -269,39 +259,39 @@ class VegiRepo:
     #     # logger.verbose("ESCSource created. ESCSource id={}".format(new_source.id))
     #     return self
 
-    @appcontext
-    def add_rating_for_product(
-        self,
-        product_id: int,
-        new_rating: VegiESCRatingSql,
-        explanations: list[VegiESCExplanationSql],
-    ):
-        # rating = ESCRating(product_name="Cannellini beans", product_id="ABC123", calculated_on=datetime.now())
-        # Dont assert below, we want to add raitngs for products using the ratings of similar products from ssutained.
-        # assert new_rating.product == product_id, "Cannot add new rating for non-matching product_id parameter"
-        sources = list(set((e.escsource for e in explanations)))
+    # @appcontext
+    # def add_rating_for_product(
+    #     self,
+    #     product_id: int,
+    #     new_rating: VegiESCRatingSql,
+    #     explanations: list[VegiESCExplanationSql],
+    # ):
+    #     # rating = ESCRating(product_name="Cannellini beans", product_id="ABC123", calculated_on=datetime.now())
+    #     # Dont assert below, we want to add raitngs for products using the ratings of similar products from ssutained.
+    #     # assert new_rating.product == product_id, "Cannot add new rating for non-matching product_id parameter"
+    #     sources = list(set((e.escsource for e in explanations)))
         
-        try:
-            VegiRepo.db_session.add(new_rating)
-            VegiRepo.db_session.commit()
-            VegiRepo.db_session.refresh(new_rating)
-            for explanation in explanations:
-                explanation.rating = new_rating.id
-                assert (
-                    new_rating.id is not None
-                ), "a new ESC rating in vegi_repo cannot have null rating id"
-                VegiRepo.db_session.add(explanation)
+    #     try:
+    #         VegiRepo.db_session.add(new_rating)
+    #         VegiRepo.db_session.commit()
+    #         VegiRepo.db_session.refresh(new_rating)
+    #         for explanation in explanations:
+    #             explanation.rating = new_rating.id
+    #             assert (
+    #                 new_rating.id is not None
+    #             ), "a new ESC rating in vegi_repo cannot have null rating id"
+    #             VegiRepo.db_session.add(explanation)
 
-            VegiRepo.db_session.commit()
-            # VegiRepo.db_session.refresh(explanations)
-            # logger.verbose(
-            #     f"ESCRating created with {len(explanations)} explanations. ESCRating id={new_rating.id}"
-            # )
-            return NewRating(
-                rating=new_rating.fetch(), explanations=[e.fetch() for e in explanations]
-            )
-        except Exception as e:
-            logger.error(e)
-            return None
+    #         VegiRepo.db_session.commit()
+    #         # VegiRepo.db_session.refresh(explanations)
+    #         # logger.verbose(
+    #         #     f"ESCRating created with {len(explanations)} explanations. ESCRating id={new_rating.id}"
+    #         # )
+    #         return NewRating(
+    #             rating=new_rating.fetch(), explanations=[e.fetch() for e in explanations]
+    #         )
+    #     except Exception as e:
+    #         logger.error(e)
+    #         return None
 
     

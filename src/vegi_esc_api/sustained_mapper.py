@@ -78,6 +78,7 @@ class SustainedVegiMapper:
                     lowerBoundOutScale=0,
                     upperBoundOutScale=5,
                 ),
+                product=sourceProductRated.db_product.id,
                 product_name=sourceProductRated.product.name,
                 product_id=sourceProductRated.product.id,
                 # calculatedOn=datetime.now(),

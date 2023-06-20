@@ -1,8 +1,6 @@
 from vegi_esc_api.views import base_app
 from vegi_esc_api.config import DevelopmentConfig
 from vegi_esc_api.vegi_repo_models import (
-    VegiESCSourceSql,
-    VegiESCExplanationSql,
     VegiESCRatingSql,
     VegiProductSql,
     VegiUserSql,
@@ -75,10 +73,8 @@ def create_app(script_info=None):
         # Bind the scoped session to the model
         VegiUserSql.query = vegi_db_session.query_property()
         VegiProductSql.query = vegi_db_session.query_property()
-        VegiESCSourceSql.query = vegi_db_session.query_property()
         VegiESCRatingSql.query = vegi_db_session.query_property()
-        VegiESCExplanationSql.query = vegi_db_session.query_property()
-
+        
     return server, vegi_db_session
 
 
