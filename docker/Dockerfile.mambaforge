@@ -75,14 +75,14 @@ COPY --from=conda /env /env
 ## the distroless container doesn't contain
 ## a shell and the command uses the copied over gunicorn conda installation that we installed using `conda env create -p /env`
 # CMD [ \
-#     "/env/bin/gunicorn", "-w", "1", "--bind", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "app:gunicorn_app", "--timeout", "600" \
+#     "/env/bin/gunicorn", "-w", "1", "--bind", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "app:gunicorn_app(verbose=True)", "--timeout", "600" \
 #     ]
 # CMD [ \
-#     "/env/bin/gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:5002", "app:gunicorn_app", "--timeout", "600" \
+#     "/env/bin/gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:5002", "app:gunicorn_app(verbose=True)", "--timeout", "600" \
 #     ]
 CMD [ \
-    "/env/bin/gunicorn", "--bind", "0.0.0.0:5002", "vegi_esc_api.app:gunicorn_app", "--timeout", "600" \
+    "/env/bin/gunicorn", "--bind", "0.0.0.0:5002", "vegi_esc_api.app:gunicorn_app(verbose=True)", "--timeout", "600" \
     ]
 # CMD [ \
-#     "/env/bin/gunicorn", "--worker-class", "aiohttp.worker.GunicornWebWorker", "--bind", "0.0.0.0:5002", "app:gunicorn_app", "--timeout", "600" \
+#     "/env/bin/gunicorn", "--worker-class", "aiohttp.worker.GunicornWebWorker", "--bind", "0.0.0.0:5002", "app:gunicorn_app(verbose=True)", "--timeout", "600" \
 #     ]

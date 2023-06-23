@@ -36,6 +36,7 @@ class Vegi_ESC_Repo:
         Vegi_ESC_Repo.db_session = scoped_session(
             sessionmaker(bind=db.get_engine(ESC_DB_NAMED_BIND))
         )
+        logger.verbose(f'{type(self).__name__} DB Session connection: {type(self).db_session} using named bind: "{ESC_DB_NAMED_BIND}"')
 
     @appcontext
     def get_sources(self, source_type: str | None = None):

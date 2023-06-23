@@ -15,5 +15,5 @@ COPY --from=conda /env /env
 
 CMD [ \
   # "/env/bin/gunicorn", "-b", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "nyc_taxi_fare.serve:app" \
-  "/env/bin/gunicorn", "--bind", "0.0.0.0:5002", "vegi_esc_api.app:gunicorn_app", "--timeout", "600" \
+  "/env/bin/gunicorn", "--bind", "0.0.0.0:5002", "vegi_esc_api.app:gunicorn_app(verbose=True)", "--timeout", "600" \
   ]

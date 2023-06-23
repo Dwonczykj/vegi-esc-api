@@ -13,12 +13,13 @@ def parse_measurement(measurement_str: str):
         return None, None
 
 
-# Example usage
-measurement = "1kg"
-result = parse_measurement(measurement)
-if result:
-    number, unit = result
-    print("Number of units:", number)
-    print("Unit type:", unit)
-else:
-    print("Invalid measurement format.")
+if __name__ == '__main__':
+    # Example usage
+    measurement = "1kg"
+    result = parse_measurement(measurement)
+    if result:
+        number, unit = result
+        print("Number of units:", number)
+        print("Unit type:", unit)
+    else:
+        print("Invalid measurement format.")

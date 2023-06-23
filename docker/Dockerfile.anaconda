@@ -8,8 +8,8 @@ RUN conda env create --file environment.yml -p /env && conda clean -afy
 # RUN conda run -n vegi_esc_server \
 #   python -m pip install --no-deps -e .
 # CMD [ \
-#   "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app:gunicorn_app" \
+#   "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app:gunicorn_app(verbose=True)" \
 #   ]
 CMD [ \
-  "/env/bin/gunicorn", "-b", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "app:gunicorn_app" \
+  "/env/bin/gunicorn", "-b", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "app:gunicorn_app(verbose=True)" \
   ]

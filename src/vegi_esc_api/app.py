@@ -31,7 +31,9 @@ import base64
 import argparse
 import os
 import json
+import sys
 from difflib import SequenceMatcher
+from typing import Any
 
 
 # import gensim.models.keyedvectors as word2vec
@@ -40,7 +42,12 @@ from future import standard_library
 standard_library.install_aliases()
 
 
-logger.set_log_level(LogLevel.verbose)
+if "--verbose" in sys.argv:
+    logger.set_log_level(LogLevel.verbose)
+    logger.info("Verbose mode enabled.")
+else:
+    logger.info("Verbose mode not specified.")
+
 
 load_dotenv()
 config = os.environ
@@ -74,15 +81,11 @@ def rating(id: str):
 
     repoConn = Vegi_ESC_Repo(app=server)
     r_id = int(id)
-    rating = repoConn.get_rating(
-        rating_id=r_id,
-        since_time_delta=timedelta(days=5)
-    )
+    rating = repoConn.get_rating(rating_id=r_id, since_time_delta=timedelta(days=5))
     if not rating:
-        return json.dumps(ServerError(
-            message='Rating not found for id',
-            code='NOT_FOUND'
-        ))
+        return json.dumps(
+            ServerError(message="Rating not found for id", code="NOT_FOUND")
+        )
     return json.dumps(rating.serialize())
 
 
@@ -115,8 +118,7 @@ def rate_product(
     # TODO: if product already exists in esc_db then use it
     ss = SustainedAPI(app=server)
     esc_product = escRepoConn.get_esc_product(
-        name=name,
-        source=ss.get_sustained_escsource().id
+        name=name, source=ss.get_sustained_escsource().id
     )
     if esc_product:
         # TODO: Rate the existing product and return
@@ -127,11 +129,13 @@ def rate_product(
         )
         if not new_rating:
             return json.dumps({})
-        return json.dumps({
-            'product': esc_product.serialize(),
-            'most_similar_esc_product': most_similar_esc_product.serialize(),
-            **new_rating.serialize(),
-        })
+        return json.dumps(
+            {
+                "product": esc_product.serialize(),
+                "most_similar_esc_product": most_similar_esc_product.serialize(),
+                **new_rating.serialize(),
+            }
+        )
     new_rating, most_similar_esc_product = _rate_product(
         product_name=name,
         product_category_name=category,
@@ -139,11 +143,13 @@ def rate_product(
     )
     if not new_rating:
         return json.dumps({})
-    return json.dumps({
-        'product': name,
-        'most_similar_esc_product': most_similar_esc_product.serialize(),
-        **new_rating.serialize(),
-    })
+    return json.dumps(
+        {
+            "product": name,
+            "most_similar_esc_product": most_similar_esc_product.serialize(),
+            **new_rating.serialize(),
+        }
+    )
     # product = escRepoConn.add_product_if_not_exists(
     #     name=name,
     #     product_external_id_on_source=product_external_id_on_source,
@@ -174,12 +180,14 @@ def rate_vegi_product(id: str):
     product, new_rating, most_similar_esc_product = _rate_vegi_product(id=int(id))
     if new_rating is None or product is None:
         return json.dumps({})
-    
-    return json.dumps({
-        'product': product.serialize(),
-        'most_similar_esc_product': most_similar_esc_product.serialize(),
-        'new_rating': new_rating.serialize()
-    })
+
+    return json.dumps(
+        {
+            "product": product.serialize(),
+            "most_similar_esc_product": most_similar_esc_product.serialize(),
+            "new_rating": new_rating.serialize(),
+        }
+    )
 
 
 def _rate_vegi_product(id: int):
@@ -187,19 +195,20 @@ def _rate_vegi_product(id: int):
     repoConn = VegiRepo(app=server)
     # * get vegi product details from vegi repository
     product, products_in_category, category = repoConn.get_product_category_details(
-        product_id=p_id
+        p_id
     )
     # NOTE Get the product and all other products in same category from vegi repo
     # NOTE So similarity checks of all product names in same cat and category name with higher weight in weighted average to get most similar sustained category
     if not products_in_category or not category or not product:
-        return None, None, ServerError(
-            message="no products matched for id",
-            code="PRODUCT_NOT_FOUND"
+        return (
+            None,
+            None,
+            ServerError(message="no products matched for id", code="PRODUCT_NOT_FOUND"),
         )
     new_rating, most_similar_esc_product = _rate_product(
         product_name=product.name,
         product_category_name=category.name,
-        product_names_in_same_category=[p.name for p in products_in_category]
+        product_names_in_same_category=[p.name for p in products_in_category],
     )
     return product, new_rating, most_similar_esc_product
 
@@ -211,9 +220,9 @@ def _find_similar_rated_product(
 ):
     if product_name not in product_names_in_same_category:
         product_names_in_same_category.append(product_name)
-    
+
     n = float(len(product_names_in_same_category))
-    
+
     # * find most similar product in sustained
     # store the distance from the category matched in teh below function too
     most_sim_cats_to_category_map = _sustained_most_similar_category_id_spaced_map(
@@ -254,7 +263,8 @@ def _find_similar_rated_product(
     # * Then match most similar product in that category same as already done and use its rating for now
     most_similar_ss_product_result = (
         _sustained_most_similar_product_for_ss_cat_space_delimited_id(
-            search_product_name=product_name, most_sim_cat_id=most_similar_ss_cat_id_spaced
+            search_product_name=product_name,
+            most_sim_cat_id=most_similar_ss_cat_id_spaced,
         )
     )
     return most_similar_ss_product_result
@@ -292,7 +302,7 @@ def _rate_product(
             )
             for e in most_similar_ss_product_result.explanations
         ],
-        source=sustained_escsource.id
+        source=sustained_escsource.id,
     )
     return new_rating, esc_product
 
@@ -492,13 +502,15 @@ def sustained_most_similar_category():
     ss = SustainedAPI(app=server)
     cat = ss.get_cat_for_space_delimited_id(most_sim_cat_id, replace=("-", " "))
     if cat:
-        return cat["name"]
+        return cat.name
     raise Exception("Category not found")
 
 
 def _sustained_product_to_vegi_esc_rating(sProd: ESCProductInstance):
     ss = SustainedAPI(app=server)
-    return ss.get_product_with_impact(sustainedProductId=sProd.product_external_id_on_source)
+    return ss.get_product_with_impact(
+        sustainedProductId=sProd.product_external_id_on_source
+    )
 
 
 def _sustained_most_similar_product(sentence1: str):
@@ -515,7 +527,7 @@ def _sustained_most_similar_product_for_ss_cat_space_delimited_id(
     cat = ss.get_cat_for_space_delimited_id(most_sim_cat_id, replace=("-", " "))
     if not cat:
         raise Exception("Category not found")
-    sustained_products = ss.get_products(category_name=cat["name"])
+    sustained_products = ss.get_products(category_name=cat.name)
     similarities = dict()
     for product in sustained_products:
         product_name = product.name
@@ -624,17 +636,7 @@ def initApp(app: Flask, args: argparse.Namespace | None = None):
 
         logger.verbose("App model loaded, now running initApp")
         host = args.host
-        # path = args.path if args.path else "/word2vec"
         port = int(os.environ.get("PORT", int(args.port)))
-
-        # if not args.model:
-        #     logger.verbose("Usage: word2vec-apy.py --model path/to/the/model [--host host --port 1234]")
-
-        # # model = models.Word2Vec.load_word2vec_format(model_path, binary=binary)
-        # model = models.KeyedVectors.load_word2vec_format(model_path, binary=binary)
-        # import gensim.downloader as api
-        # model = api.load('word2vec-google-news-300')
-        # logger.info(model["queen"])
 
         norm = args.norm if args.norm else "both"
         norm = norm.lower()
@@ -721,4 +723,19 @@ else:
         f'Thread name running app is "{__name__}"'
     )  # Thread name running app is "app" if command run is `gunicorn --bind 127.0.0.1:5002 app:gunicorn_app --timeout 90`
     runApp = initApp(app=server)
-    gunicorn_app = server  # gunicorn --bind 127.0.0.1:5002 app:gunicorn_app --timeout 90 --log-level=debug
+    
+    # Gunicorn entry point generator
+    def _app(*args: Any, **kwargs: Any):
+        # Gunicorn CLI args are useless.
+        # https://stackoverflow.com/questions/8495367/
+        #
+        # Start the application in modified environment.
+        # https://stackoverflow.com/questions/18668947/
+        #
+        import sys
+        sys.argv = ['--gunicorn']
+        for k in kwargs:
+            sys.argv.append("--" + k)
+            sys.argv.append(kwargs[k])
+        return server
+    gunicorn_app = _app  # gunicorn --bind 127.0.0.1:5002 app:gunicorn_app(**kwargs) --timeout 90 --log-level=debug

@@ -1,6 +1,10 @@
 from enum import Enum
-from typing import Callable, Literal, Any
-from pprint import pprint
+from typing import Callable, Literal, Any, Type
+import os
+import sys
+from types import TracebackType
+import traceback
+from pprint import pprint, pformat
 from colorama import Fore, Style
 import time
 
@@ -8,7 +12,6 @@ import time
 try:
     from IPython.core.display import HTML as html_print
     from icecream import ic  # , IceCreamDebugger
-
     only_pprint = True
 except Exception:
     only_pprint = False
@@ -26,7 +29,7 @@ logging.basicConfig(
 
 global LOG_LEVEL
 
-LOG_LEVEL: int = 4
+LOG_LEVEL: int = 5
 
 
 class LogLevel(Enum):
@@ -83,11 +86,68 @@ def slow_call_timer(func: Callable):
     return _slow_call_timer(func=func, n=5)
 
 
+__mycode = True
+
+
+def is_mycode(tb: TracebackType):
+    globals = tb.tb_frame.f_globals
+    return '__mycode' in globals
+
+
+def mycode_traceback_levels(tb: TracebackType | None):
+    '''
+    Extract your frames from your codebase:
+        
+        1. "skip the frames that don't matter to you (e.g. custom assert code)"
+        
+        2. "identify how many frames are part of your code -> length"
+        
+        3. "extract length frames"
+    '''
+    length = 0
+    while tb and is_mycode(tb):
+        tb = tb.tb_next
+        length += 1
+    return length
+
+
+def format_exception(type: Type[BaseException] | None, value: BaseException | None, tb: TracebackType | None):
+    # 1. skip custom assert code, e.g.
+    # while tb and is_custom_assert_code(tb):
+    #   tb = tb.tb_next
+    # 2. only display your code
+    length = mycode_traceback_levels(tb)
+    return ''.join(traceback.format_exception(type, value, tb, length))
+
+
+def format_full_stacktrace(log_level: Literal[0, 1, 2, 3, 4, 5]):
+    '''
+    ~ https://stackoverflow.com/a/32999522
+    '''
+    # print(__file__)
+    # print(os.path.abspath(__file__))
+    # print(os.path.realpath(__file__))
+    # print(os.path.relpath(os.path.dirname(__file__)))
+    # # print(list(__path__))
+    # print(__package__)
+    # print(os.path.abspath(__package__))
+    # print(os.path.realpath(__package__))
+    # print(__loader__)
+    src_path_descriptor = os.path.relpath(os.path.dirname(__file__))
+    stackTraceFrames = [SF for SF in traceback.extract_stack(f=None, limit=None) if src_path_descriptor in SF.filename and '/Users/joey/.vscode/extensions' not in SF.filename and not SF.filename.endswith('logger.py')]
+    if log_level <= LogLevel.warn.value:
+        stackTraceStrList = traceback.format_list(stackTraceFrames)
+    else:
+        stackTraceStrList = traceback.format_list(stackTraceFrames[:-2])
+    return stackTraceStrList
+
+
 def log_return_with(
     val: Any,
     log_level: Literal[0, 1, 2, 3, 4, 5] = LogLevel.verbose.value,
     string_color: str = Fore.BLACK,
     printer: PrintTypeLiteral = "display",
+    stackTrace: list[str] | None = None,
 ):
     if log_level <= LogLevel.error.value:
         string_color = Fore.RED
@@ -113,6 +173,13 @@ def log_return_with(
         elif printer == "html_print":
             c = html_print
 
+    if not stackTrace:
+        # Each item in the list is a quadruple (filename, line number, function name, text), and the entries are in order from oldest to newest stack frame.
+        # stackTraceList = [text for (filename, line_number, function_name, text) in traceback.extract_stack(f=None, limit=None) if '/Users/joey/.vscode/extensions' not in filename]
+        # stackTrace = str(traceback.extract_stack(f=None, limit=None))
+        # stackTrace = str(pformat('\n\t'.join(format_full_stacktrace(log_level=log_level))))
+        stackTrace = format_full_stacktrace(log_level=log_level)
+
     if log_level <= LOG_LEVEL:
         try:
             if (
@@ -125,11 +192,18 @@ def log_return_with(
                 )
             elif isinstance(val, str):
                 c(string_color + val + Style.RESET_ALL)
+                c(Fore.YELLOW + 'StackTrace: ' + Style.RESET_ALL)
+                print(stackTrace)
             else:
                 c(string_color + str(val) + Style.RESET_ALL)
+                c(Fore.YELLOW + 'StackTrace: ' + Style.RESET_ALL)
+                # c(Fore.YELLOW + stackTrace + Style.RESET_ALL)
+                print(stackTrace)
         except Exception as e:
+            print(Fore.YELLOW + 'StackTrace: ' + Style.RESET_ALL)
+            print(stackTrace)
             print(e)
-            c(val)
+            c(val + Style.RESET_ALL)
     return val
 
 
@@ -147,6 +221,25 @@ def log_with(
 
 
 def error(val: Any):
+    print(val)
+    exc = sys.exception()
+    print("*** print_tb:")
+    traceback.print_tb(exc.__traceback__, limit=1, file=sys.stdout)
+    print("*** print_exception:")
+    traceback.print_exception(exc, limit=2, file=sys.stdout)
+    print("*** print_exc:")
+    traceback.print_exc(limit=2, file=sys.stdout)
+    print("*** format_exc, first and last line:")
+    formatted_lines = traceback.format_exc().splitlines()
+    print(formatted_lines[0])
+    print(formatted_lines[-1])
+    print("*** format_exception:")
+    print(repr(traceback.format_exception(exc)))
+    print("*** extract_tb:")
+    print(repr(traceback.extract_tb(exc.__traceback__)))
+    print("*** format_tb:")
+    print(repr(traceback.format_tb(exc.__traceback__)))
+    print("*** tb_lineno:", exc.__traceback__.tb_lineno)
     return log_with(val, log_level=LogLevel.error.value)
 
 

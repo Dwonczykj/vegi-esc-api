@@ -1,5 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import sys
+import traceback
 
 from flask import Flask
 from datetime import datetime, timedelta
@@ -52,6 +54,7 @@ class VegiRepo:
         VegiRepo.db_session = scoped_session(
             sessionmaker(bind=db.get_engine(VEGI_DB_NAMED_BIND))
         )
+        logger.verbose(f'{type(self).__name__} DB Session connection: {type(self).db_session} using named bind: "{VEGI_DB_NAMED_BIND}"')
 
     @appcontext
     def get_users(self):
@@ -67,32 +70,38 @@ class VegiRepo:
 
     @appcontext
     def get_product_category_details(self, product_id: int) -> Tuple[VegiProductInstance | None, list[VegiProductInstance] | None, VegiProductCategorySql | None]:
-        dataProduct: VegiProductSql | None = (
-            VegiRepo.db_session.query(VegiProductSql)
-            .filter(VegiProductSql.id == product_id)
-            .first()
-        )
-        if dataProduct is None:
-            logger.error(
-                f'Unable to locate product in vegi db with id: "{id}" for vegi_repo.get_product_category_details'
+        try:
+            dataProduct: VegiProductSql | None = (
+                VegiRepo.db_session.query(VegiProductSql)
+                .filter(VegiProductSql.id == product_id)
+                .first()
             )
+            logger.info(dataProduct)
+            if dataProduct is None:
+                logger.error(
+                    f'Unable to locate product in vegi db with id: "{id}" for vegi_repo.get_product_category_details'
+                )
+                return (None, None, None)
+            dataProductsInSameCategory: list[
+                Union[Tuple[VegiProductSql, VegiProductCategorySql], Row]
+            ] = (
+                VegiRepo.db_session.query(VegiProductSql, VegiProductCategorySql)
+                .join(
+                    VegiProductCategorySql,
+                    VegiProductSql.category == VegiProductCategorySql.id,
+                )
+                .filter(VegiProductSql.category == dataProduct.category)
+                .all()
+            )
+            return (
+                dataProduct.fetch(),
+                [p.fetch() for (p, cat) in dataProductsInSameCategory],
+                next((cat for (p, cat) in dataProductsInSameCategory)).fetch(),  # type: ignore
+                # dataProductsInSameCategory[0]['VegiProductCategorySql'].fetch() if 'VegiProductCategorySql' in dataProductsInSameCategory[0] else None,  # type: ignore
+            )
+        except Exception as e:
+            logger.error(e)
             return (None, None, None)
-        dataProductsInSameCategory: list[
-            Union[Tuple[VegiProductSql, VegiProductCategorySql], Row]
-        ] = (
-            VegiRepo.db_session.query(VegiProductSql, VegiProductCategorySql)
-            .join(
-                VegiProductCategorySql,
-                VegiProductSql.category == VegiProductCategorySql.id,
-            )
-            .filter(VegiProductSql.category == dataProduct.category)
-            .all()
-        )
-        return (
-            dataProduct.fetch(),
-            [p.fetch() for (p, cat) in dataProductsInSameCategory],
-            dataProductsInSameCategory[0]['VegiProductCategorySql'].fetch() if 'VegiProductCategorySql' in dataProductsInSameCategory[0].keys() else None,  # type: ignore
-        )
 
     # @appcontext
     # def get_product_ratings(self, limit: int):

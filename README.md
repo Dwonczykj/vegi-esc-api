@@ -108,8 +108,9 @@ zsh ./shell_scripts_devops/makeRun.sh # ~ see https://docs.docker.com/engine/ref
 
 ### Dash Endpoints:
 
-- http://localhost:5002/dashboard/ where the code is defined in layouts for dash apps
+- http://localhost:5002/dashboard/ or http://127.0.0.1:5002/dashboard/ and http://127.0.0.1:5002/ to login with username and pass defined in .env. The dashboard is where the code is defined in layouts for dash apps.
 ### All other Endpoints defined in `app.py` with port `2001` for when in docker image, and `5002` when running without docker
+### Localhost Port
 - http://localhost:5002/success/fenton
 - http://127.0.0.1:5002/n_similarity?ws1=Sushi&ws1=Shop&ws2=Japanese&ws2=Restaurant -> { Success: 0.7014271020889282 }
 - http://127.0.0.1:5002/similarity?w1=Sushi&w2=Japanese -> { Success: 0.3347574472427368 }
@@ -118,7 +119,10 @@ zsh ./shell_scripts_devops/makeRun.sh # ~ see https://docs.docker.com/engine/ref
 - http://127.0.0.1:5002/model?word=restaurant -> { Success: AAAYvgAA/r0AACk9AABWPgAA+b0AAFc+AABjvQAAVb0AAGs+AAClPQAA8D0AAFQ8AAA9PgAAs74AADu9AAC1PQAAqb0AAFs8AACXPQAAmL0AAEo+AAAxvgAAqjwAABm+AABvvAAA8r0AAJc9AAAuPgAAtT4AAO89AAAqvgAAer4AAKE9AAA+PgAAM74AALC9AAD6PgAAHz0AAAy+AADhvQAALr4AAGq9AACwPQAApj4AAL+9AABsvgAA1b4AAGm7AABNPQAAcj4AAKM8AAA+PgAAnj0AAFy+AADcvQAAlrwAAF0+AACxPQAA9L0AACu+AAAFvgAAED0AAG6+AABevgAADD4AAGs9AAAvPQAAUr4AAIU+AABEvgAAsD0AAAI+AAAMPQAAiL0AAOK+AADgvQAA474AAFo+AAA3OwAAh74AAAo+AACZvgAAQr4AANM9AACuvgAA1jwAAKy+AACrPgAAlD0AAK6+AAAcvQAAn74AAIe+AAAJvQAAOb4AAAS+AAAOvgAACb4AABc+AADuvQAAn74AADS+AABdPgAAJDwAAHY+AABgvgAAwD0AACy+AAC4vAAAAL4AAGO+AAAjPQAAjb0AAJ6+AAAwPgAAX74AALM9AADXvQAAPr4AAJC9AABLvgAAyb0AABe9AACaPQAAVj0AADw9AACuvAAAeDwAAAM9AAAzPQAAvD0AAKW9AACCPgAAET4AAIu9AACMPQAApT0AAI29AADfPQAABT4AAD2+AAD+vQAAPL4AAEK9AAC0PAAApb0AAFu+AAArPgAAWL4AAGY+AAAlPgAAuD4AAHA9AAC3PQAA7jwAAJk7AAAZPQAAeD0AAAW+AACuvQAAab4AAEc+AADxuwAAiL0AAJu9AAAEvgAAOr4AADC9AADWPQAAaL4AAGa+AACtvQAAiD0AAHG+AABJvgAASj4AAIo+AACQPgAAgT4AAAk+AADSvQAAyz0AAB49AACQvgAA+D0AAPq9AAAOvQAA1j4AAKe9AACwvgAADj0AAEM+AABuvQAAPT4AAMy9AAAwPgAAkD0AAKC7AAA8PAAANb0AAIW+AABFPgAAtDoAADs7AADkvAAAW74AANs9AAA+PgAAkzwAAN47AACRvQAAwz0AAC49AAAiPgAA570AAHE+AAD3vQAAvjwAACG+AAA0PQAAFT4AAKU9AACUvQAAwLwAADo+AAAgPgAAM74AAHo+AABVvgAArLwAACM+AAA4vgAA0b4AAHY+AABTPgAAZr4AAJo+AADiPQAAPb4AAKs9AAB4PgAA8b0AADA+AACmvAAAKr0AAI2+AACxPgAApL0AADc+AAC+PQAAGb0AACM+AAB0PgAAQr4AANW9AACQvgAAgz0AAD29AAB5vgAARD0AAJa9AADlOwAArTwAAMY9AACcPQAAKz0AAHu+AABnvgAAsb0AAAA8AAB3vQAAAb0AAJe+AAAePQAADz0AAGc8AAD7vQAAEr4AAEs+AADyvgAAq7wAAAk+AAAfvgAAYD4AAEW+AAAZvQAAO74AAHI+AAAivgAA7D4AAOQ8AABuPQAAVDwAAPc+AADEPgAAyr0AAHY9AADCvQAADT4AAOo9 }
 - http://127.0.0.1:5002/model_word_set -> Internal Server Error!
 - http://127.0.0.1:2001/nearest-word-in-model?w1=bike
-- http://localhost:2001/vegi-users -> Success
 
-- http://127.0.0.1:2001/sentence_similarity?s1=Chocolate%20cake&s2=Bakery -> { Success: 0.367022610081167 }
+### Docker Port
+- http://127.0.0.1:2001/success/fenton
+- http://127.0.0.1:2001/vegi-users -> Success
+- http://127.0.0.1:2001/sentence_similarity?s1=Chocolate%20cake&s2=Bakery -> Success: 0.7233545909583172 using full googlenews model
+- http://127.0.0.1:2001/rate-vegi-product/2 -> Success
 - http://127.0.0.1:2001/rate-latest?n=1 -> 

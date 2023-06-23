@@ -1,20 +1,34 @@
 from __future__ import annotations
 
-import os
+
 from flask import Flask
 import requests
-import json
-import jsons
 import cachetools.func
 from vegi_esc_api.create_app import create_app
-
+import jsons
 import vegi_esc_api.logger as logger
 from vegi_esc_api.helpers import parse_measurement
 from vegi_esc_api.models import ESCProductInstance
 from vegi_esc_api.models_wrapper import CachedSustainedItemCategory
 from vegi_esc_api.sustained_mapper import SustainedVegiMapper
-from vegi_esc_api.sustained_models import SustainedCategoriesList, SustainedCategory, SustainedImpact, SustainedImpactsList, SustainedProductBase, SustainedProductExplained, SustainedProductsList, SustainedSingleProductResult
-from vegi_esc_api.vegi_esc_repo import Vegi_ESC_Repo, CachedItemSql, ESCSourceSql, ESCRatingSql, SUSTAINED_DOMAIN_NAME
+from vegi_esc_api.sustained_models import (
+    SustainedCategoriesList,
+    SustainedCategory,
+    SustainedImpact,
+    SustainedImpactsList,
+    SustainedProductBase,
+    SustainedProductExplained,
+    SustainedProductsList,
+    SustainedSingleProductResult,
+)
+from vegi_esc_api.vegi_esc_repo import (
+    Vegi_ESC_Repo,
+    CachedItemSql,
+    ESCSourceSql,
+    ESCRatingSql,
+    SUSTAINED_DOMAIN_NAME,
+)
+
 # from vegi_esc_api.models import CachedItemCreate
 
 from datetime import datetime
@@ -28,35 +42,26 @@ class SustainedAPI:
         SustainedAPI.app = app
         SustainedAPI.vegi_esc_repo = Vegi_ESC_Repo(app=app)
 
-    def _load_products_from_fn(self, category_id: str):
-        fn = self.get_localstorage_fn(category_id)
-        with open(fn, "r") as f:
-            productsObjs = json.load(f)
-        if not isinstance(productsObjs, list):
-            raise Exception("sustainedLocalData should hold a list of products")
-        return [SustainedProductBase.fromJson(c) for c in productsObjs]
-
-    def useLocalStorage(self):
-        dirname = "localstorage"
-        if not os.path.exists(dirname):
-            os.makedirs(os.path.dirname(dirname), exist_ok=True)
-
     def _checkSourceExists(self):
-        sustained_source = SustainedAPI.vegi_esc_repo.get_source(source_name=SUSTAINED_DOMAIN_NAME)
+        sustained_source = SustainedAPI.vegi_esc_repo.get_source(
+            source_name=SUSTAINED_DOMAIN_NAME
+        )
         if not sustained_source:
-            sustained_source = SustainedAPI.vegi_esc_repo.add_source(new_source=ESCSourceSql(
-                name=SUSTAINED_DOMAIN_NAME,
-                domain=SUSTAINED_DOMAIN_NAME,
-                source_type='api',
-                credibility=1,
-            ))
+            sustained_source = SustainedAPI.vegi_esc_repo.add_source(
+                new_source=ESCSourceSql(
+                    name=SUSTAINED_DOMAIN_NAME,
+                    domain=SUSTAINED_DOMAIN_NAME,
+                    source_type="api",
+                    credibility=1,
+                )
+            )
         self.sustained_source = sustained_source
         return sustained_source
-    
+
     def get_sustained_escsource(self):
         self._checkSourceExists()
         return self.sustained_source
-    
+
     def _fetchCategories(self):
         url = "https://api.sustained.com/choice/v1/categories"
         print(f'GET -> "{url}"')
@@ -69,20 +74,12 @@ class SustainedAPI:
             item_source=SUSTAINED_DOMAIN_NAME,
             item_json=jsons.dumps([category.toJson() for category in categories]),
             ttl_days=30,
-            created_on=datetime.now()
+            created_on=datetime.now(),
         )
         SustainedAPI.vegi_esc_repo.add_cached_items(items=[cachedItem])
-        # self.useLocalStorage()
-        # # todo replace with vegi_esc_repo.write_db
-        # with open('localstorage/sustained-categories.json', 'w') as f:
-        #     json.dump(responseData.toJson(), f, indent=2)
-        #     print('Written categories from sustained to local storage')
-
         return categories
 
     def _fetchProductsForCategory(self, category: SustainedCategory):
-        # cat_id = category.id
-        # fn = self.get_localstorage_fn(cat_id)
         url = category.links.products
         return self._fetchProducts(url=url, category=category)
 
@@ -120,25 +117,25 @@ class SustainedAPI:
             num_units, unit_type = parse_measurement(product.pack)
             if not num_units or not unit_type:
                 num_units = 100
-                unit_type = 'g'
+                unit_type = "g"
             SustainedAPI.vegi_esc_repo.add_product_if_not_exists(
                 name=product.name,
                 product_external_id_on_source=product.id,
                 source=self.get_sustained_escsource().id,
-                description='',
+                description="",
                 category=product.category,
                 keyWords=[],
                 imageUrl=product.image,
-                ingredients='',
-                packagingType='unknown',
+                ingredients="",
+                packagingType="unknown",
                 stockUnitsPerProduct=1,
                 sizeInnerUnitValue=num_units,
                 sizeInnerUnitType=unit_type,
-                productBarCode='',
-                supplier='',
-                brandName='',
-                origin='',
-                finalLocation='',
+                productBarCode="",
+                supplier="",
+                brandName="",
+                origin="",
+                finalLocation="",
                 taxGroup=product.gtin,
                 dateOfBirth=datetime.now(),
                 finalDate=datetime.now(),
@@ -157,32 +154,34 @@ class SustainedAPI:
         num_units, unit_type = parse_measurement(product.pack)
         if not num_units or not unit_type:
             num_units = 100
-            unit_type = 'g'
+            unit_type = "g"
         esc_product = SustainedAPI.vegi_esc_repo.add_product_if_not_exists(
             name=product.name,
             product_external_id_on_source=product.id,
             source=self.get_sustained_escsource().id,
-            description='',
+            description="",
             category=product.category,
             keyWords=[],
             imageUrl=product.image,
-            ingredients='',
-            packagingType='unknown',
+            ingredients="",
+            packagingType="unknown",
             stockUnitsPerProduct=1,
             sizeInnerUnitValue=num_units,
             sizeInnerUnitType=unit_type,
-            productBarCode='',
-            supplier='',
-            brandName='',
-            origin='',
-            finalLocation='',
+            productBarCode="",
+            supplier="",
+            brandName="",
+            origin="",
+            finalLocation="",
             taxGroup=product.gtin,
             dateOfBirth=datetime.now(),
             finalDate=datetime.now(),
         )
         return product, esc_product
 
-    def _fetchProductImpacts(self, product: SustainedProductBase, esc_product: ESCProductInstance):
+    def _fetchProductImpacts(
+        self, product: SustainedProductBase, esc_product: ESCProductInstance
+    ):
         if not product.links.impacts:
             raise TypeError(product.links)
 
@@ -201,7 +200,9 @@ class SustainedAPI:
                 impacts += responseData.impacts
             else:
                 break
-        productsExplained = SustainedProductExplained(product=product, impacts=impacts, db_product=esc_product)
+        productsExplained = SustainedProductExplained(
+            product=product, impacts=impacts, db_product=esc_product
+        )
         productsExplainedForVegiDB = (
             self.sustained_to_vegi_mapper.mapSustainedProductImpactsToVegi(
                 sourceProductRated=productsExplained
@@ -217,7 +218,7 @@ class SustainedAPI:
                 rating=productsExplainedForVegiDB.rating.rating,
             ),
             explanationsCreate=productsExplainedForVegiDB.explanations,
-            source=sustained_source.id
+            source=sustained_source.id,
         )
         return productsExplainedForVegiDB
 
@@ -230,18 +231,10 @@ class SustainedAPI:
         self._checkSourceExists()
         if refresh_categories:
             categories = self._fetchCategories()
-            # with open('sustained.json','w') as f:
-            #     json.dump({'categories':categories,'products':products}, f, indent=2)
         else:
             categories = self.get_categories()
-            # self.useLocalStorage()
-            # with open('localstorage/sustained-categories.json', 'r') as f:
-            #     sustainedOldLocalData = json.load(f)
-            #     categories = [SustainedCategory.fromJson(c) for c in sustainedOldLocalData['categories']]
-            # existingProducts = sustainedOldLocalData['products'] if 'products' in sustainedOldLocalData.keys() else []
 
         if category_name:
-            # responseData['products'] = existingProducts
             cat = next(
                 (c for c in categories if c.name.lower() == category_name.lower()), None
             )
@@ -267,19 +260,8 @@ class SustainedAPI:
 
     @cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)
     def get_categories(self):
-        # todo replace with vegi_esc_repo.write_db
         cats_with_products = SustainedAPI.vegi_esc_repo.get_sustained_categories()
         return [SustainedCategory.fromJson(c.toJson()) for c in cats_with_products]
-        # self.useLocalStorage()
-        # with open('localstorage/sustained-categories.json', 'r') as f:
-        #     sustainedLocalData = json.load(f)
-        #     categoriesObjs = sustainedLocalData['categories']
-        #     if not isinstance(categoriesObjs, list):
-        #         raise Exception(
-        #             'sustainedLocalData should hold a list of categories')
-        #     categories = [SustainedCategory.fromJson(
-        #         c) for c in categoriesObjs]
-        # return categories
 
     @cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)
     def get_products(self, category_name: str = ""):
@@ -296,25 +278,25 @@ class SustainedAPI:
                 num_units, unit_type = parse_measurement(sustained_product.pack)
                 if not num_units or not unit_type:
                     num_units = 100
-                    unit_type = 'g'
+                    unit_type = "g"
                 esc_product = SustainedAPI.vegi_esc_repo.add_product_if_not_exists(
                     name=sustained_product.name,
                     product_external_id_on_source=sustained_product.id,
                     source=self.get_sustained_escsource().id,
-                    description='',
+                    description="",
                     category=sustained_product.category,
                     keyWords=[],
                     imageUrl=sustained_product.image,
-                    ingredients='',
-                    packagingType='unknown',
+                    ingredients="",
+                    packagingType="unknown",
                     stockUnitsPerProduct=1,
                     sizeInnerUnitValue=num_units,
                     sizeInnerUnitType=unit_type,
-                    productBarCode='',
-                    supplier='',
-                    brandName='',
-                    origin='',
-                    finalLocation='',
+                    productBarCode="",
+                    supplier="",
+                    brandName="",
+                    origin="",
+                    finalLocation="",
                     taxGroup=sustained_product.gtin,
                     dateOfBirth=datetime.now(),
                     finalDate=datetime.now(),
@@ -344,50 +326,46 @@ class SustainedAPI:
 
     def get_product_with_impact(self, sustainedProductId: str):
         product, esc_product = self._fetchProduct(id=sustainedProductId)
-        assert esc_product is not None, "esc_product cannot be None after being fetched in sustained.get_product_with_impact()"
-        productExplained = self._fetchProductImpacts(product=product, esc_product=esc_product)
+        assert (
+            esc_product is not None
+        ), "esc_product cannot be None after being fetched in sustained.get_product_with_impact()"
+        productExplained = self._fetchProductImpacts(
+            product=product, esc_product=esc_product
+        )
         return productExplained
 
     @cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)
     def get_category_ids(self, replace: tuple = ("", "")):
-        self.useLocalStorage()
-        with open("localstorage/sustained-categories.json", "r") as f:
-            sustainedLocalData = json.load(f)
-            categories = sustainedLocalData["categories"]
+        categories = self._fetchCategories()
         return [
-            c["id"].replace(replace[0], replace[1])
+            c.id.replace(replace[0], replace[1])
             if replace and replace[0] != ""
-            else c["id"]
+            else c.id
             for c in categories
         ]
 
+    @cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)
     def get_cat_for_space_delimited_id(
         self, most_sim_cat_id: str, replace: tuple = ("", "")
     ):
-        self.useLocalStorage()
-        with open("localstorage/sustained-categories.json", "r") as f:
-            sustainedLocalData = json.load(f)
-            categories = sustainedLocalData["categories"]
+        categories = self._fetchCategories()
         return next(
             (
                 c
                 for c in categories
                 if (
-                    c["id"].replace(replace[0], replace[1])
+                    c.id.replace(replace[0], replace[1])
                     if replace and replace[0] != ""
-                    else c["id"]
+                    else c.id
                 ).lower()
-                == most_sim_cat_id
+                == most_sim_cat_id.lower()
             ),
             None,
         )
 
     def get_category_names(self):
-        self.useLocalStorage()
-        with open("localstorage/sustained-categories.json", "r") as f:
-            sustainedLocalData = json.load(f)
-            categories = sustainedLocalData["categories"]
-        return [c["name"] for c in categories]
+        categories = self._fetchCategories()
+        return [c.name for c in categories]
 
 
 if __name__ == "__main__":

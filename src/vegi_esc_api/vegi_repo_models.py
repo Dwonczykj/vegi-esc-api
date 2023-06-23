@@ -199,18 +199,6 @@ class VegiUserSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
 
     _isSuperAdmin: GColumn[bool] = Column("isSuperAdmin", Boolean)
 
-    @hybrid_property
-    def calculated_on(self):
-        return self._calculated_on
-
-    @calculated_on.setter
-    def calculated_on_setter(self, calculated_on: datetime):
-        self._calculated_on = calculated_on
-
-    _calculated_on: GColumn[datetime] = Column(
-        "calculated_on", DateTime, default=func.now(), nullable=False
-    )
-
     def __init__(
         self,
         id: int,
@@ -224,7 +212,6 @@ class VegiUserSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
         name: str,
         fbUid: str,
         isSuperAdmin: bool,
-        # calculated_on: datetime,
     ):
         self.id = id
         self.email = email
@@ -237,7 +224,6 @@ class VegiUserSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
         self.name = name
         self.fbUid = fbUid
         self.isSuperAdmin = isSuperAdmin
-        # self.calculated_on = calculated_on
 
     def __repr__(self):
         return (
@@ -333,7 +319,7 @@ class VegiCategoryGroupSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
 
     def __repr__(self):
         return (
-            f"{type(self).__name__}<id {self.id}; name {self.name}; email {self.email}>"
+            f"{type(self).__name__}<id {self.id}; name {self.name}>"
         )
 
     def serialize(self):
@@ -403,11 +389,9 @@ class VegiProductCategorySql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
         self.vendor = vendor
         self.categoryGroup = categoryGroup
 
-        # self.calculated_on = calculated_on
-
     def __repr__(self):
         return (
-            f"{type(self).__name__}<id {self.id}; name {self.name}; email {self.email}>"
+            f"{type(self).__name__}<id {self.id}; name {self.name}>"
         )
 
     def serialize(self):
@@ -647,11 +631,9 @@ class VegiProductSql(db.Model, _DBDataClassJsonWrapped, _DBFetchable):
         self.vendor = vendor
         self.category = category
 
-        # self.calculated_on = calculated_on
-
     def __repr__(self):
         return (
-            f"{type(self).__name__}<id {self.id}; name {self.name}; email {self.email}>"
+            f"{type(self).__name__}<id {self.id}; name {self.name}>"
         )
 
     def serialize(self):

@@ -80,7 +80,12 @@ class VegiRepoProtocol(Protocol):
         
 
 # ~ https://www.notion.so/gember/Python-Cheats-8d7b0cc6f58544ef888ea36bb5879141?pvs=4#94e922507b5a426a804ea7d75574fc11
-def appcontext(f: F) -> F:
+def appcontext(f: F, *args: Any, **kwargs: Any) -> F:
+    if args:
+        logger.warn(f'Unknown args for appcontext decorator: {args}')
+    if kwargs:
+        logger.warn(f'Unknown kwargs for appcontext decorator: {kwargs}')
+    
     def deco(self: VegiRepoProtocol, *args: Any, **kwargs: Any):
         with self.app.app_context():
             try:
