@@ -6,6 +6,7 @@ backup_localstorage
 localstorage
 old_models
 word2vec_pip_env
+notebooks
 
 .env
 *.env

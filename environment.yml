@@ -35,7 +35,16 @@ dependencies:
   - wtforms
   - openssl
   - plotly
+  - matplotlib 
+  # - mpl_toolkits
   - dash
   - pandas
+  - umap-learn
   - scikit-learn
+  - beautifulsoup4
+  - requests
+  - lxml
+  # - fasttext # pip needed for this?...
+  - seaborn
+  - langchain
 prefix: /opt/homebrew/Caskroom/miniconda/base/envs/tes2

@@ -305,7 +305,12 @@ def display_scatterplot_2D(
 
 
 def update_figure(
-    dim_red="TSNE", dimension="2D", top_n=10, annotation="On", user_input="", view_to_similar_words: list[str] = [],
+    dim_red="TSNE",
+    dimension="2D",
+    top_n=10,
+    annotation="On",
+    user_input="",
+    view_to_similar_words: list[str] = [],
 ):
     # dim_red = st.sidebar.selectbox("Select dimension reduction method", ("PCA", "TSNE"))
 

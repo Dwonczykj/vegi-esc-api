@@ -1,0 +1,52 @@
+name: esc-llm
+channels:
+  - defaults
+dependencies:
+  - aiohttp
+  - plotly
+  - scikit-learn
+  - pymysql
+  - ca-certificates
+  - umap-learn
+  - certifi
+  - cachetools
+  - python-dotenv
+  - gunicorn
+  - flask-migrate
+  - flask
+  - flask-wtf
+  - langchain
+  - dash
+  - wtforms
+  - pip
+  - future
+  - nltk
+  - flask-login
+  - seaborn
+  - numpy
+  - jsons
+  - uvicorn
+  - werkzeug
+  - dataclasses
+  - requests
+  - openssl
+  - flask-cors
+  - pot
+  - matplotlib
+  - lxml
+  - paramiko
+  - pandas
+  - pyyaml
+  - flask-sqlalchemy
+  - gensim
+  - setuptools_scm
+  - beautifulsoup4
+  - boto3
+  - psycopg2
+  - ipykernel
+  - openai
+  - chromadb # pip
+  - tiktoken
+  - ftfy
+  - unidecode
+prefix: /opt/homebrew/Caskroom/miniconda/base/envs/esc-llm

@@ -17,6 +17,7 @@ dependencies:
   # - numpy
   # - paramiko
   - pot # BUG for osx-64 -> linux-64, osx-64, osx-arm64, win-32, win-64 ~ https://anaconda.org/conda-forge/pot
+  - fasttext
   # - pymysql # ~ https://anaconda.org/anaconda/pymysql
   # - python-dotenv 
   # - pyyaml

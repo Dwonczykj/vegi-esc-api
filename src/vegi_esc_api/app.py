@@ -443,12 +443,7 @@ def lookup_most_similar_word_in_language_model():
 
 @server.route("/connection")
 def connection():
-    args = request.args
-    a = str(args["w1"]).lower()
-    b = str(args["w2"]).lower()
-    result = model.similarity(a, b).item()
-    logger.info(result)
-    return f"Success: {result}"
+    return f"Success: {Vegi_ESC_Repo.db_session.is_active}"
 
 
 @slow_call_timer
@@ -582,7 +577,7 @@ def most_similar():
     neg = [] if neg is None else neg
     t = 10 if t is None else t
     logger.verbose(
-        "positive: " + str(pos) + " negative: " + str(neg) + " topn: " + str(t)
+        "positive: " + str(pos) + ", negative: " + str(neg) + ", topn: " + str(t)
     )
     try:
         res = model.most_similar_cosmul(positive=pos, negative=neg, topn=t)

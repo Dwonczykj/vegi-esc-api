@@ -226,3 +226,7 @@ cython_debug/
 #.idea/
 # build_docker.sh
 environment_backup.yml
+
+
+*.parquet
+*/.chroma/**/*
