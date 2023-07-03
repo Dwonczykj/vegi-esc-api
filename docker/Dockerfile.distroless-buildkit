@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:experimental
 # Container for building the environment
 # ~ https://stackoverflow.com/a/71611002 + first comment for docker run adding a --platform linux/x86_64 as first arg to command
 FROM --platform=linux/amd64 condaforge/mambaforge:4.9.2-5 as conda
