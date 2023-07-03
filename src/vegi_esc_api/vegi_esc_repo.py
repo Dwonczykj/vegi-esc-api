@@ -12,10 +12,12 @@ from sqlalchemy.engine.row import Row
 from datetime import datetime, timedelta
 from flask import Flask
 import jsons
-
+import numpy as np
 from vegi_esc_api.models_wrapper import CachedSustainedItemCategory
+from vegi_esc_api.constants import AppConstants
 
-SUSTAINED_DOMAIN_NAME = 'sustained.com'
+
+SUSTAINED_DOMAIN_NAME = AppConstants.SUSTAINED_DOMAIN_NAME
 
 
 @dataclass
@@ -93,6 +95,19 @@ class Vegi_ESC_Repo:
         dataProduct: ESCProductSql | None = (
             Vegi_ESC_Repo.db_session.query(ESCProductSql)
             .filter(and_(ESCProductSql.name == name, ESCProductSql.source == source))
+            .first()
+        )
+        return dataProduct.fetch() if dataProduct is not None else None
+    
+    @appcontext
+    def get_esc_product_by_id(
+        self,
+        id: int,
+        source: int,
+    ):
+        dataProduct: ESCProductSql | None = (
+            Vegi_ESC_Repo.db_session.query(ESCProductSql)
+            .filter(and_(ESCProductSql.id == id, ESCProductSql.source == source))
             .first()
         )
         return dataProduct.fetch() if dataProduct is not None else None
@@ -309,6 +324,24 @@ class Vegi_ESC_Repo:
             return []
 
     @appcontext
+    def get_products(self, item_source: int) -> list[ESCProductInstance]:
+        # items: list[ESCProductInstance] = []
+        try:
+            _items = (
+                ESCProductSql.query
+                .filter(ESCProductSql.source == item_source)
+                .all()
+            )
+            assert isinstance(_items, list)
+            return [
+                c.fetch()
+                for c in _items
+            ]
+        except Exception as e:
+            logger.error(str(e))
+            return []
+
+    @appcontext
     def get_sustained_categories(self):
         return self.get_categories(item_source=SUSTAINED_DOMAIN_NAME)
         
@@ -410,6 +443,99 @@ class Vegi_ESC_Repo:
         except Exception as e:
             logger.error(e)
             return None
+    
+    @appcontext
+    def add_explanation_for_product(
+        self,
+        product: int,
+        source: int,
+        title: str,
+        measure: float,
+        evidence: str,
+        reasons: list[str],
+    ):
+        # rating = ESCRating(product_name="Cannellini beans", product_id="ABC123", calculated_on=datetime.now())
+        # Dont assert below, we want to add raitngs for products using the ratings of similar products from ssutained.
+        # assert new_rating.product == product_id, "Cannot add new rating for non-matching product_id parameter"
+        esc_product = self.get_esc_product_by_id(
+            id=product,
+            source=source,
+        )
+        if esc_product is None:
+            logger.error(f'Product[{product}] not found in vegi_esc_repo.add_explanation_for_product')
+            return None
+        new_explanation = ESCExplanationCreate(
+            title=title,
+            measure=measure,
+            evidence=evidence,
+            reasons=reasons,
+        )
+        try:
+            ratingForProduct: ESCProductSql | None = (
+                ESCRatingSql
+                .query
+                .filter(ESCRatingSql.product == product)
+                .order_by(desc(ESCRatingSql.calculated_on))
+                .first()
+            )
+            explanations: list[ESCExplanationCreate] = [new_explanation]
+            if ratingForProduct and isinstance(ratingForProduct.id, int):
+                _explanations = (
+                    ESCExplanationSql.query.filter(ESCExplanationSql.rating == ratingForProduct.id).all()
+                )
+                assert isinstance(_explanations, list)
+                explanations += [
+                    ESCExplanationCreate(
+                        title=e.title,
+                        measure=e.measure,
+                        evidence=e.evidence,
+                        reasons=e.reasons,
+                    ) for e in _explanations
+                ]
+                # explanations_for_db = [
+                #     ESCExplanationSql(
+                #         title=e.title,
+                #         measure=e.measure,
+                #         reasons=e.reasons,
+                #         evidence=e.evidence,
+                #         rating=ratingForProduct.id,
+                #         source=source
+                #     )
+                #     for e in _explanations
+                # ]
+                # for explanation in explanations_for_db:
+                #     Vegi_ESC_Repo.db_session.add(explanation)
+
+                # Vegi_ESC_Repo.db_session.commit()
+                # ! add a new rating every time we change the ratings as ratings are create only, we cannot modify the rating measure once calculated.
+                return self.add_rating_for_product(
+                    new_rating=ESCRatingSql(
+                        product=esc_product.id,
+                        product_name=esc_product.name,
+                        product_id=esc_product.product_external_id_on_source,
+                        calculated_on=datetime.now(),
+                        rating=np.mean([e.measure for e in explanations]).astype(float),  # todo: this needs to be done by ESC engine
+                    ),
+                    explanationsCreate=explanations,
+                    source=source,
+                )
+            else:
+                return self.add_rating_for_product(
+                    new_rating=ESCRatingSql(
+                        product=esc_product.id,
+                        product_name=esc_product.name,
+                        product_id=esc_product.product_external_id_on_source,
+                        calculated_on=datetime.now(),
+                        rating=np.mean([e.measure for e in explanations]).astype(float),  # todo: this needs to be done by ESC engine
+                    ),
+                    explanationsCreate=explanations,
+                    source=source,
+                )
+            # return [e.fetch() for e in explanations]
+        except Exception as e:
+            logger.error(str(e))
+            return None
+        
 
     @appcontext
     def add_cached_items(self, items: list[CachedItemSql]):

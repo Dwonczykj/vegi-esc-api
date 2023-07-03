@@ -136,9 +136,9 @@ def format_full_stacktrace(log_level: Literal[0, 1, 2, 3, 4, 5]):
     src_path_descriptor = os.path.relpath(os.path.dirname(__file__))
     stackTraceFrames = [SF for SF in traceback.extract_stack(f=None, limit=None) if src_path_descriptor in SF.filename and '/Users/joey/.vscode/extensions' not in SF.filename and not SF.filename.endswith('logger.py')]
     if log_level <= LogLevel.warn.value:
-        stackTraceStrList = traceback.format_list(stackTraceFrames)
+        stackTraceStrList = pformat(traceback.format_list(stackTraceFrames))
     else:
-        stackTraceStrList = traceback.format_list(stackTraceFrames[:-2])
+        stackTraceStrList = pformat(traceback.format_list(stackTraceFrames[:-2]))
     return stackTraceStrList
 
 

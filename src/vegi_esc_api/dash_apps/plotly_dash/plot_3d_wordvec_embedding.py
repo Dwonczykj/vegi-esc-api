@@ -1,7 +1,7 @@
 # Import packages
 from flask import Flask
 from vegi_esc_api.sustained import SustainedAPI
-from vegi_esc_api.word_vec_model import getModel
+from vegi_esc_api.word_vec_model import Word_Vec_Model
 import vegi_esc_api.logger as logger
 import cachetools.func
 import re
@@ -22,7 +22,7 @@ import pandas as pd
 # # dash internal route prefix, must be start and end with "/"
 # URL_BASE_PATHNAME = "/dash/custom-app/"
 
-model = getModel()
+model = Word_Vec_Model.getModel(app=None).model
 
 
 # @cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)

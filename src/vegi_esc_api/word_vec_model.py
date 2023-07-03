@@ -1,12 +1,14 @@
-import vegi_esc_api.logger as logger
-from typing import Any
+from __future__ import annotations
+from typing import Self, Type, Any
 from gensim import models
 import argparse
 import os
+from flask import Flask
+import vegi_esc_api.logger as logger
 # import gensim.models.keyedvectors as word2vec
 
 
-def getModel(args: argparse.Namespace | None = None):
+def _getModel(args: argparse.Namespace | None = None):
     model: Any
     models_path = "./models"
     # model_abs_dir = os.path.abspath(models_path)
@@ -56,3 +58,21 @@ def getModel(args: argparse.Namespace | None = None):
     # if not os.path.exists(model_save_path):
     #     model.save()
     return model
+
+
+class Word_Vec_Model:
+    def __init__(
+        self,
+        model: Any,
+    ) -> None:
+        self._model = model
+
+    @property
+    def model(self):
+        return self._model
+
+    @classmethod
+    def getModel(cls, app: Flask, args: argparse.Namespace | None = None) -> Self:
+        _model = _getModel(args=args)
+        self = Word_Vec_Model(model=_model)
+        return self

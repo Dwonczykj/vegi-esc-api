@@ -93,7 +93,7 @@ conda env export --from-history > environment.yml
 
 conda-lock -f predict-environment.yml -f pot-environment.yml -p linux-64 -k explicit --filename-template "predict-{platform}.lock"
 
-zsh ./shell_scripts_devops/makeRun.sh # ~ see https://docs.docker.com/engine/reference/commandline/buildx_build/
+docker system prune -f & zsh ./shell_scripts_devops/makeRun.sh # ~ see https://docs.docker.com/engine/reference/commandline/buildx_build/
 # or manually run:
 # make distroless-buildkit
 # imageName="vegi_esc_server_distroless-buildkit"
@@ -112,6 +112,11 @@ zsh ./shell_scripts_devops/makeRun.sh # ~ see https://docs.docker.com/engine/ref
 ### All other Endpoints defined in `app.py` with port `2001` for when in docker image, and `5002` when running without docker
 ### Localhost Port
 - http://localhost:5002/success/fenton
+- http://127.0.0.1:5002/reset-llm-db?reinit=True
+- http://127.0.0.1:5002/llm/view-vector-store-documents
+- http://127.0.0.1:5002/llm/view-vector-store
+- http://127.0.0.1:5002/llm/query-vector-store?query=hummous
+- http://127.0.0.1:5002/llm/query-vector-store?query=Hummous
 - http://127.0.0.1:5002/n_similarity?ws1=Sushi&ws1=Shop&ws2=Japanese&ws2=Restaurant -> { Success: 0.7014271020889282 }
 - http://127.0.0.1:5002/similarity?w1=Sushi&w2=Japanese -> { Success: 0.3347574472427368 }
 - http://localhost:2001/similarity?w1=bike&w2=car -> { Success: 0.7764649391174316 } 
@@ -122,7 +127,10 @@ zsh ./shell_scripts_devops/makeRun.sh # ~ see https://docs.docker.com/engine/ref
 
 ### Docker Port
 - http://127.0.0.1:2001/success/fenton
+- http://127.0.0.1:2001/llm/view-vector-store -> 
 - http://127.0.0.1:2001/vegi-users -> Success
 - http://127.0.0.1:2001/sentence_similarity?s1=Chocolate%20cake&s2=Bakery -> Success: 0.7233545909583172 using full googlenews model
 - http://127.0.0.1:2001/rate-vegi-product/2 -> Success
 - http://127.0.0.1:2001/rate-latest?n=1 -> 
+- http://127.0.0.1:2001/llm/view-vector-store-documents -> 
+- http://127.0.0.1:2001/llm/query-vector-store?query=hummous -> 

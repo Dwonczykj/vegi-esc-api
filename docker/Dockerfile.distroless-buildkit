@@ -22,6 +22,7 @@ COPY --from=conda /env /env
 # COPY models/word2vec-google-news-300 /models
 # COPY models/word2vec-google-news-300.vectors.npy /models
 COPY /models /models
+COPY /.chromadb /.chromadb
 
 CMD [ \
   # "/env/bin/gunicorn", "-b", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "nyc_taxi_fare.serve:app" \

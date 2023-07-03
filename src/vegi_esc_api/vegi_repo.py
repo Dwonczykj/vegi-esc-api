@@ -17,6 +17,7 @@ from vegi_esc_api.vegi_repo_models import (
     VegiUserSql,
     VEGI_DB_NAMED_BIND,
     VegiProductCategorySql,
+    VegiProductCategoryInstance,
     VegiCategoryGroupSql,
     _DBFetchable,
 )
@@ -67,6 +68,46 @@ class VegiRepo:
         products: list[VegiProductSql] = VegiProductSql.query.all()
         assert isinstance(products, list)
         return [e.fetch() for e in products]
+
+    @appcontext
+    def get_products_with_categories(self, vendor: int | None = None) -> list[Tuple[VegiProductInstance, VegiProductCategoryInstance]]:
+        if vendor:
+            products: list[Union[Tuple[VegiProductSql, VegiProductCategorySql], Row]] = (
+                VegiRepo.db_session.query(VegiProductSql, VegiProductCategorySql)
+                .join(
+                    VegiProductCategorySql,
+                    VegiProductSql.category == VegiProductCategorySql.id,
+                )
+                .filter(VegiProductSql.vendor == vendor)
+                .all()
+            )
+        else:
+            products: list[Union[Tuple[VegiProductSql, VegiProductCategorySql], Row]] = (
+                VegiRepo.db_session.query(VegiProductSql, VegiProductCategorySql)
+                .join(
+                    VegiProductCategorySql,
+                    VegiProductSql.category == VegiProductCategorySql.id,
+                )
+                .all()
+            )
+        assert isinstance(products, list)
+        return [(p.fetch(), cat.fetch()) for (p, cat) in products]
+    
+    @appcontext
+    def get_product_categories(self, vendor: int | None = None) -> list[VegiProductCategoryInstance]:
+        if vendor:
+            products: list[VegiProductCategorySql] = (
+                VegiRepo.db_session.query(VegiProductCategorySql)
+                .filter(VegiProductCategorySql.vendor == vendor)
+                .all()
+            )
+        else:
+            products: list[VegiProductCategorySql] = (
+                VegiRepo.db_session.query(VegiProductCategorySql)
+                .all()
+            )
+        assert isinstance(products, list)
+        return [p.fetch() for p in products]
 
     @appcontext
     def get_product_category_details(self, product_id: int) -> Tuple[VegiProductInstance | None, list[VegiProductInstance] | None, VegiProductCategorySql | None]:

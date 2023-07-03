@@ -47,4 +47,10 @@ dependencies:
   # - fasttext # pip needed for this?...
   - seaborn
   - langchain
+  - ipykernel
+  - openai
+  - chromadb # pip
+  - tiktoken
+  - ftfy
+  - unidecode
 prefix: /opt/homebrew/Caskroom/miniconda/base/envs/tes2

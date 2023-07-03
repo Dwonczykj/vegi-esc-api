@@ -22,7 +22,9 @@ from vegi_esc_api.create_app import create_app
 from vegi_esc_api.models import ESCProductInstance, ESCExplanationCreate, ServerError
 from vegi_esc_api.logger import LogLevel, slow_call_timer
 import vegi_esc_api.logger as logger
-from vegi_esc_api.word_vec_model import getModel
+from vegi_esc_api.word_vec_model import Word_Vec_Model
+from vegi_esc_api.llm_model import LLM
+from vegi_esc_api.i_llm import I_Am_LLM
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from flask import redirect, url_for, request, Flask
@@ -34,6 +36,7 @@ import json
 import sys
 from difflib import SequenceMatcher
 from typing import Any
+from chromadb.api.types import Document
 
 
 # import gensim.models.keyedvectors as word2vec
@@ -78,7 +81,6 @@ def login():
 @server.route("/rating/<id>")
 def rating(id: str):
     rating = None
-
     repoConn = Vegi_ESC_Repo(app=server)
     r_id = int(id)
     rating = repoConn.get_rating(rating_id=r_id, since_time_delta=timedelta(days=5))
@@ -86,7 +88,7 @@ def rating(id: str):
         return json.dumps(
             ServerError(message="Rating not found for id", code="NOT_FOUND")
         )
-    return json.dumps(rating.serialize())
+    return rating.serialize()
 
 
 @slow_call_timer
@@ -128,28 +130,26 @@ def rate_product(
             product_names_in_same_category=[],
         )
         if not new_rating:
-            return json.dumps({})
-        return json.dumps(
-            {
-                "product": esc_product.serialize(),
-                "most_similar_esc_product": most_similar_esc_product.serialize(),
-                **new_rating.serialize(),
-            }
-        )
+            return {}
+        return ({
+            "product": esc_product.serialize(),
+            "most_similar_esc_product": most_similar_esc_product.serialize(),
+            **new_rating.serialize(),
+        })
+        
     new_rating, most_similar_esc_product = _rate_product(
         product_name=name,
         product_category_name=category,
         product_names_in_same_category=[],
     )
     if not new_rating:
-        return json.dumps({})
-    return json.dumps(
-        {
-            "product": name,
-            "most_similar_esc_product": most_similar_esc_product.serialize(),
-            **new_rating.serialize(),
-        }
-    )
+        return {}
+    return ({
+        "product": name,
+        "most_similar_esc_product": most_similar_esc_product.serialize(),
+        **new_rating.serialize(),
+    })
+    
     # product = escRepoConn.add_product_if_not_exists(
     #     name=name,
     #     product_external_id_on_source=product_external_id_on_source,
@@ -177,18 +177,19 @@ def rate_product(
 @slow_call_timer
 @server.route("/rate-vegi-product/<id>")
 def rate_vegi_product(id: str):
+    # todo: use llm to get most similar esc product
+    # todo: find all locations where the existing word2vec model is used from that getModel function and modularise
+    # so that the module contains all the methods that we might want to call on the vec model.
     product, new_rating, most_similar_esc_product = _rate_vegi_product(id=int(id))
     if new_rating is None or product is None:
-        return json.dumps({})
+        return {}
 
-    return json.dumps(
-        {
-            "product": product.serialize(),
-            "most_similar_esc_product": most_similar_esc_product.serialize(),
-            "new_rating": new_rating.serialize(),
-        }
-    )
-
+    return ({
+        "product": product.serialize(),
+        "most_similar_esc_product": most_similar_esc_product.serialize(),
+        "new_rating": new_rating.serialize(),
+    })
+    
 
 def _rate_vegi_product(id: int):
     p_id = int(id)
@@ -261,13 +262,75 @@ def _find_similar_rated_product(
         (k for k, v in _sscat_id_name_to_avg_wmd.items() if v == most_sim_v)
     )
     # * Then match most similar product in that category same as already done and use its rating for now
-    most_similar_ss_product_result = (
+    most_similar_ss_product_result, min_v = (
         _sustained_most_similar_product_for_ss_cat_space_delimited_id(
             search_product_name=product_name,
             most_sim_cat_id=most_similar_ss_cat_id_spaced,
         )
     )
-    return most_similar_ss_product_result
+    vegi_rated_most_sim_product = _convert_sustained_product_to_vegi_rating(
+        esc_product=most_similar_ss_product_result,
+        min_v=min_v,
+        original_search_term=product_name,
+    )
+    return vegi_rated_most_sim_product
+
+
+@slow_call_timer
+@server.route("/reset-llm-db")
+def reset_LLM_db():
+    llm: I_Am_LLM = LLM.getModel(app=server)
+    reinit: bool = False
+    if request.args and request.args.get("reinit"):
+        reinit = request.args.get("reinit") == "True"
+    return llm.chromadb_reset_db(reinit=reinit)
+    
+    # collection = llm.chroma_get_esc_collection(llm.chroma_esc_product_collection_name)
+    # if collection:
+    #     return json.dumps(collection.peek())
+    # return "db reset complete"
+
+
+@slow_call_timer
+@server.route("/llm/view-vector-store")
+def view_vector_store():
+    llm: I_Am_LLM = LLM.getModel(app=server)
+    collection = llm.chroma_get_esc_collection()
+    return collection.json() if collection else "no vector store found"
+    
+    
+@slow_call_timer
+@server.route("/llm/view-vector-store-documents")
+def view_vector_store_documents():
+    llm: I_Am_LLM = LLM.getModel(app=server)
+    query_texts = []
+    _query_texts = request.args.get("query")
+    if _query_texts is not None:
+        query_texts = _query_texts.split(",")
+    result = llm.chroma_query_vector_store(["documents"], *query_texts)
+    assert result is not None, "chromadb QueryResult in LLM().chroma_most_similar_sustained_products didnt obtain a query result"
+    documents = result["documents"]
+    assert documents is not None, "chromadb QueryResult in LLM().chroma_most_similar_sustained_products didnt contain documents"
+    if not documents:
+        return []
+    if isinstance(documents[0], list):
+        return [d for dl in documents for d in dl]
+    elif isinstance(documents[0], Document):
+        return [d for d in documents]
+    return [d for dl in documents for d in dl]
+
+
+@slow_call_timer
+@server.route("/llm/query-vector-store")
+def query_vector_store():
+    llm: I_Am_LLM = LLM.getModel(app=server)
+    query_texts = []
+    _query_texts = request.args.get("query")
+    if _query_texts is not None:
+        query_texts = _query_texts.split(",")
+    result = llm.chroma_query_vector_store(["documents", "metadatas"], *query_texts)
+    assert result is not None, "chromadb QueryResult in LLM().chroma_most_similar_sustained_products didnt obtain a query result"
+    return result
 
 
 def _rate_product(
@@ -275,35 +338,71 @@ def _rate_product(
     product_names_in_same_category: list[str],
     product_category_name: str,
 ):
+    llm: I_Am_LLM = LLM.getModel(app=server)
+    escRepoConn = Vegi_ESC_Repo(app=server)
     ss = SustainedAPI(app=server)
     sustained_escsource = ss.get_sustained_escsource()
-    escRepoConn = Vegi_ESC_Repo(app=server)
-    most_similar_ss_product_result = _find_similar_rated_product(
-        product_name=product_name,
-        product_names_in_same_category=product_names_in_same_category,
-        product_category_name=product_category_name,
+    
+    most_similar_esc_products = llm.most_similar_esc_products(product_name)  # todo: get the cosine distance of similarity between similar product and search term name foe the min_v below
+    assert most_similar_esc_products is not None, f"llm.most_similar_esc_products(\"{product_name}\") should not return None"
+    esc_product = list(most_similar_esc_products.values())[0]
+    assert esc_product is not None, f"llm.most_similar_esc_products(\"{product_name}\") should not return a None dictionary value"
+    vegi_rated_most_sim_product = _convert_sustained_product_to_vegi_rating(
+        esc_product=esc_product,
+        min_v=0.5,
+        original_search_term=product_name,
     )
-    esc_product = most_similar_ss_product_result._sustainedProduct
     new_rating = escRepoConn.add_rating_for_product(
         # product_id=p_id,
         new_rating=ESCRatingSql(
             product=esc_product.id,
-            product_id=most_similar_ss_product_result.rating.product_id,
-            product_name=most_similar_ss_product_result.rating.product_name,
-            rating=most_similar_ss_product_result.rating.rating,
-            calculated_on=most_similar_ss_product_result.rating.calculated_on,
+            product_id=vegi_rated_most_sim_product.rating.product_id,
+            product_name=vegi_rated_most_sim_product.rating.product_name,
+            rating=vegi_rated_most_sim_product.rating.rating,
+            calculated_on=vegi_rated_most_sim_product.rating.calculated_on,
         ),
         explanationsCreate=[
             ESCExplanationCreate(
-                title=f"Proxy from similar product [{most_similar_ss_product_result._sustainedProduct.name}]: {e.title}",
+                title=f"Proxy from similar product [{vegi_rated_most_sim_product._sustainedProduct.name}]: {e.title}",
                 measure=e.measure,
                 reasons=e.reasons,
                 evidence=e.evidence,
             )
-            for e in most_similar_ss_product_result.explanations
+            for e in vegi_rated_most_sim_product.explanations
         ],
         source=sustained_escsource.id,
     )
+    # if most_similar_ss_product_result is None:
+    #     ss = SustainedAPI(app=server)
+    #     sustained_escsource = ss.get_sustained_escsource()
+    #     escRepoConn = Vegi_ESC_Repo(app=server)
+    #     most_similar_ss_product_result = _find_similar_rated_product(
+    #         product_name=product_name,
+    #         product_names_in_same_category=product_names_in_same_category,
+    #         product_category_name=product_category_name,
+    #     )
+    
+    #     esc_product = most_similar_ss_product_result._sustainedProduct
+    #     new_rating = escRepoConn.add_rating_for_product(
+    #         # product_id=p_id,
+    #         new_rating=ESCRatingSql(
+    #             product=esc_product.id,
+    #             product_id=most_similar_ss_product_result.rating.product_id,
+    #             product_name=most_similar_ss_product_result.rating.product_name,
+    #             rating=most_similar_ss_product_result.rating.rating,
+    #             calculated_on=most_similar_ss_product_result.rating.calculated_on,
+    #         ),
+    #         explanationsCreate=[
+    #             ESCExplanationCreate(
+    #                 title=f"Proxy from similar product [{most_similar_ss_product_result._sustainedProduct.name}]: {e.title}",
+    #                 measure=e.measure,
+    #                 reasons=e.reasons,
+    #                 evidence=e.evidence,
+    #             )
+    #             for e in most_similar_ss_product_result.explanations
+    #         ],
+    #         source=sustained_escsource.id,
+    #     )
     return new_rating, esc_product
 
 
@@ -353,7 +452,7 @@ def rate_latest():
         # )
         # new_ratings += [new_rating]
 
-    return json.dumps([nr.serialize() for nr in new_ratings])
+    return [nr.serialize() for nr in new_ratings]
 
 
 @server.route("/vegi-users")
@@ -362,7 +461,7 @@ def vegi_users():
     repoConn = VegiRepo(app=server)
     users = repoConn.get_users()
 
-    return json.dumps([u.serialize() for u in users])
+    return [u.serialize() for u in users]
 
 
 def filter_words(words: list[str] | str):
@@ -373,7 +472,7 @@ def filter_words(words: list[str] | str):
     # return words
     # Use KeyedVector's .key_to_index dict, .index_to_key list, and methods .get_vecattr(key, attr) and .set_vecattr(key, attr, new_val) instead.
     # See https: // github.com/RaRe-Technologies/gensim/wiki/Migrating-from -Gensim-3.x-to-4
-    return [word for word in words if word in model.key_to_index.keys()]
+    return [word for word in words if word in model.key_to_index.keys()]  # TODO: DONT USE A GLOBAL?...
 
 
 @slow_call_timer
@@ -381,6 +480,97 @@ def filter_words(words: list[str] | str):
 def success(name: str):
     return "welcome %s" % name
 
+
+@server.route("/products/add")  # type: ignore
+def add_product():
+    name: str = request.args.get('name', '')
+    assert name, "name argument must be required and non-empty"
+    product_external_id_on_source: str = request.args.get('product_external_id_on_source', '')
+    assert product_external_id_on_source, "product_external_id_on_source must be required and non-empty"
+    source: int = int(request.args.get('source', '0'))
+    assert source, "source argument must be required and non-empty"
+    description: str = request.args.get('description', default='')
+    category: str = request.args.get('category', default='')
+    assert category, "category argument must be required and non-empty"
+    keyWords: list[str] = json.loads(s=request.args.get('keyWords', default='[]'))
+    imageUrl: str = request.args.get('imageUrl', default='')
+    ingredients: str = request.args.get('ingredients', default='')
+    packagingType: str = request.args.get('packagingType', default='')
+    stockUnitsPerProduct: int = int(request.args.get('stockUnitsPerProduct', default='0'))
+    sizeInnerUnitValue: float = float(request.args.get('sizeInnerUnitValue', default='1.0'))
+    sizeInnerUnitType: str = request.args.get('sizeInnerUnitType', default='g')
+    productBarCode: str = request.args.get('productBarCode', default='')
+    supplier: str = request.args.get('supplier', default='')
+    assert supplier, "supplier argument must be required and non-empty"
+    brandName: str = request.args.get('brandName', default='')
+    assert brandName, "brandName argument must be required and non-empty"
+    origin: str = request.args.get('origin', default='')
+    taxGroup: str = request.args.get('taxGroup', default='')
+    dateOfBirth: datetime = datetime.strptime(request.args.get('dateOfBirth', default=datetime.now().strftime('%Y-%M-%d')), '%Y-%M-%d')
+    finalLocation: str = request.args.get('finalLocation', '')
+    finalDate: datetime = datetime.strptime(request.args.get('finalDate', default=datetime.now().strftime('%Y-%M-%d')), '%Y-%M-%d')
+    repoConn = Vegi_ESC_Repo(app=server)
+    newProduct = repoConn.add_product_if_not_exists(
+        name=name,
+        product_external_id_on_source=product_external_id_on_source,    
+        source=source,    
+        description=description,    
+        category=category,    
+        keyWords=keyWords,    
+        imageUrl=imageUrl,    
+        ingredients=ingredients,    
+        packagingType=packagingType,    
+        stockUnitsPerProduct=stockUnitsPerProduct,    
+        sizeInnerUnitValue=sizeInnerUnitValue,    
+        sizeInnerUnitType=sizeInnerUnitType,    
+        productBarCode=productBarCode,    
+        supplier=supplier,    
+        brandName=brandName,    
+        origin=origin,    
+        taxGroup=taxGroup,    
+        dateOfBirth=dateOfBirth,
+        finalDate=finalDate,
+        finalLocation=finalLocation,
+    )
+    if newProduct:
+        return newProduct.serialize()
+    else:
+        return ({
+            'message': 'Error creating new product',
+            'code': 'Product_not_created',
+        })
+        
+
+@server.route("/explanations/add")
+def add_explanation():
+    title: str = request.args.get('title', '')
+    assert title, "title argument must be required and non-empty"
+    product: int = int(request.args.get('product', '0'))
+    assert product, "product argument must be required and non-empty"
+    source: int = int(request.args.get('source', '0'))
+    assert source, "source argument must be required and non-empty"
+    measure: float = float(request.args.get('measure', '0.0'))
+    assert measure, "measure argument must be required and non-empty"
+    evidence: str = request.args.get('evidence', '')
+    assert evidence, "evidence must be required and non-empty"
+    reasons: list[str] = json.loads(s=request.args.get('reasons', default='[]'))
+    repoConn = Vegi_ESC_Repo(app=server)
+    newProduct = repoConn.add_explanation_for_product(
+        product=product,
+        source=source,
+        title=title,
+        measure=measure,
+        evidence=evidence,
+        reasons=reasons,
+    )
+    if newProduct:
+        return newProduct.serialize()
+    else:
+        return ({
+            'message': 'Error creating new explanation for product',
+            'code': 'Product_explanation_not_created',
+        })
+    
 
 @slow_call_timer
 @server.route("/n_similarity")
@@ -510,9 +700,18 @@ def _sustained_product_to_vegi_esc_rating(sProd: ESCProductInstance):
 
 def _sustained_most_similar_product(sentence1: str):
     most_sim_cat_id = _sustained_most_similar_category_id_spaced(sentence1)
-    return _sustained_most_similar_product_for_ss_cat_space_delimited_id(
-        search_product_name=sentence1, most_sim_cat_id=most_sim_cat_id
+    most_similar_ss_product_result, min_v = (
+        _sustained_most_similar_product_for_ss_cat_space_delimited_id(
+            search_product_name=sentence1,
+            most_sim_cat_id=most_sim_cat_id,
+        )
     )
+    vegi_rated_most_sim_product = _convert_sustained_product_to_vegi_rating(
+        esc_product=most_similar_ss_product_result,
+        min_v=min_v,
+        original_search_term=sentence1,
+    )
+    return vegi_rated_most_sim_product
 
 
 def _sustained_most_similar_product_for_ss_cat_space_delimited_id(
@@ -523,12 +722,12 @@ def _sustained_most_similar_product_for_ss_cat_space_delimited_id(
     if not cat:
         raise Exception("Category not found")
     sustained_products = ss.get_products(category_name=cat.name)
-    similarities = dict()
+    similarities: dict[str, float] = dict()
     for product in sustained_products:
         product_name = product.name
         similarities[product_name] = model.wmdistance(product_name, search_product_name)
         logger.verbose(f"'{product_name}': {similarities[product_name]}")
-    min_v = min([v for v in similarities.values()])
+    min_v: float = min([v for v in similarities.values()])
     most_similar = next((k for k, v in similarities.items() if v == min_v))
     products_with_matching_name = [
         p for p in sustained_products if p.name.lower() == most_similar.lower()
@@ -537,7 +736,12 @@ def _sustained_most_similar_product_for_ss_cat_space_delimited_id(
         products_with_matching_name
     ), "Products_with_matching_name somehow lost product name - Should never happen"
     most_similar_product = products_with_matching_name[0]
-    vegiRating = _sustained_product_to_vegi_esc_rating(sProd=most_similar_product)
+    return most_similar_product, min_v
+
+
+def _convert_sustained_product_to_vegi_rating(esc_product: ESCProductInstance, min_v: float, original_search_term: str):
+    ''' use the ESCProductInstance to create a new vegi ESC rating'''
+    vegiRating = _sustained_product_to_vegi_esc_rating(sProd=esc_product)
     # adjust rating for wmdistance away if < 0.5 keep same as v similar product if > 1.2, v different products and reduce rating by 50%
     if min_v <= 0.6:
         pass  # no adjustment needed as fairly close match
@@ -551,9 +755,9 @@ def _sustained_most_similar_product_for_ss_cat_space_delimited_id(
     return ESCRatingExplainedResult(
         rating=vegiRating.rating,
         explanations=vegiRating.explanations,
-        original_search_term=search_product_name,
+        original_search_term=original_search_term,
         wmdistance=min_v,
-        _sustainedProduct=most_similar_product,
+        _sustainedProduct=esc_product,
     )
 
 
@@ -627,7 +831,7 @@ def initApp(app: Flask, args: argparse.Namespace | None = None):
     global model
     global norm
     if args:
-        model = getModel(args=args)
+        model = Word_Vec_Model.getModel(app=app, args=args).model
 
         logger.verbose("App model loaded, now running initApp")
         host = args.host
@@ -666,7 +870,7 @@ def initApp(app: Flask, args: argparse.Namespace | None = None):
         # logger.verbose("Loading model...")
         # model = models.KeyedVectors.load_word2vec_format(model_path, binary=binary)
         # model = models.Word2Vec.load_word2vec_format(model_path, binary=binary)
-        model = getModel()
+        model = Word_Vec_Model.getModel(app=app).model
         norm = "both"
         logger.verbose("Normalizing...")
         model.fill_norms()
@@ -682,7 +886,7 @@ if __name__ == "__main__":
     # ----------- Parsing Arguments ---------------
     p = argparse.ArgumentParser()
     default_host = "0.0.0.0"
-    default_port = 5002
+    default_port = os.environ.get("PORT", 5002)
     p.add_argument("--model", help="Path to the trained model")
     p.add_argument(
         "--binary", help="Specifies the loaded model is binary", default=False

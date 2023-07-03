@@ -230,3 +230,6 @@ environment_backup.yml
 
 *.parquet
 */.chroma/**/*
+**/.chromadb/**/*
+.chromadb/
+*/.DS_Store

@@ -1,1 +1,1 @@
-web: gunicorn app:app
+web: gunicorn vegi_esc_api.app:gunicorn_app(verbose=True) --bind 0.0.0.0:$PORT --timeout 600
