@@ -4,7 +4,7 @@ from typing import Any, Callable, Self
 from vegi_esc_api.vegi_esc_repo_models import ESCSourceSql, ESCRatingSql, CachedItemSql, ESCExplanationSql, ESCProductSql, ESC_DB_NAMED_BIND
 from vegi_esc_api.repo_models_base import appcontext
 from vegi_esc_api.models import ESCSourceInstance, ESCExplanationCreate, ESCRatingInstance, ESCExplanationInstance, ESCProductInstance
-import vegi_esc_api.logger as logger
+import vegi_esc_api.logger as Logger
 from vegi_esc_api.extensions import db
 from sqlalchemy import asc, desc, or_, and_
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -38,7 +38,7 @@ class Vegi_ESC_Repo:
         Vegi_ESC_Repo.db_session = scoped_session(
             sessionmaker(bind=db.get_engine(ESC_DB_NAMED_BIND))
         )
-        logger.verbose(f'{type(self).__name__} DB Session connection: {type(self).db_session} using named bind: "{ESC_DB_NAMED_BIND}"')
+        Logger.verbose(f'{type(self).__name__} DB Session connection: {type(self).db_session} using named bind: "{ESC_DB_NAMED_BIND}"')
 
     @appcontext
     def get_sources(self, source_type: str | None = None):
@@ -51,7 +51,7 @@ class Vegi_ESC_Repo:
             assert isinstance(sources, list)
             return [e.fetch() for e in sources]
         except Exception as e:
-            logger.error(str(e))
+            Logger.error(str(e))
             return []
     
     @appcontext
@@ -67,7 +67,7 @@ class Vegi_ESC_Repo:
                 return sources[0].fetch()
             return None
         except Exception as e:
-            logger.error(str(e))
+            Logger.error(str(e))
             return None
 
     @appcontext
@@ -83,7 +83,7 @@ class Vegi_ESC_Repo:
             )
             return rating.fetch() if rating else None
         except Exception as e:
-            logger.error(str(e))
+            Logger.error(str(e))
             return None
             
     @appcontext
@@ -170,10 +170,10 @@ class Vegi_ESC_Repo:
                 db.session.add(new_esc_product)
                 db.session.commit()
                 db.session.refresh(new_esc_product)
-                logger.verbose(f"ESCProduct created. ESCProduct.id={new_esc_product.id}")
+                Logger.verbose(f"ESCProduct created. ESCProduct.id={new_esc_product.id}")
                 dataProduct = new_esc_product
             except Exception as e:
-                logger.error(e)
+                Logger.error(e)
                 return None
         return dataProduct.fetch()
     
@@ -299,7 +299,7 @@ class Vegi_ESC_Repo:
             assert isinstance(items, list)
             return [i.fetch() for i in items]
         except Exception as e:
-            logger.error(str(e))
+            Logger.error(str(e))
             return []
     
     @appcontext
@@ -320,7 +320,7 @@ class Vegi_ESC_Repo:
                 if c.item_type == "category"
             ]
         except Exception as e:
-            logger.error(str(e))
+            Logger.error(str(e))
             return []
 
     @appcontext
@@ -338,7 +338,7 @@ class Vegi_ESC_Repo:
                 for c in _items
             ]
         except Exception as e:
-            logger.error(str(e))
+            Logger.error(str(e))
             return []
 
     @appcontext
@@ -366,7 +366,7 @@ class Vegi_ESC_Repo:
         ''' See https://www.notion.so/vegiapp/2446a82bdee94f0cb9e6d7671a78bb06?v=a4d348fe223645ed9b5d079e1abc2b1b&pvs=4 for list of sources in vegi notion'''
         # source = ESCSource(name="Napolina", source_type="Website", domain="https://napolina.com/", credibility=0)
         db.session.add(new_source)
-        logger.verbose("ESCSource created. ESCSource id={}".format(new_source.id))
+        Logger.verbose("ESCSource created. ESCSource id={}".format(new_source.id))
         db.session.commit()
         db.session.refresh(new_source)
         return new_source.fetch()
@@ -441,7 +441,7 @@ class Vegi_ESC_Repo:
                 rating=new_rating.fetch(), explanations=[e.fetch() for e in explanations]
             )
         except Exception as e:
-            logger.error(e)
+            Logger.error(e)
             return None
     
     @appcontext
@@ -462,7 +462,7 @@ class Vegi_ESC_Repo:
             source=source,
         )
         if esc_product is None:
-            logger.error(f'Product[{product}] not found in vegi_esc_repo.add_explanation_for_product')
+            Logger.error(f'Product[{product}] not found in vegi_esc_repo.add_explanation_for_product')
             return None
         new_explanation = ESCExplanationCreate(
             title=title,
@@ -533,7 +533,7 @@ class Vegi_ESC_Repo:
                 )
             # return [e.fetch() for e in explanations]
         except Exception as e:
-            logger.error(str(e))
+            Logger.error(str(e))
             return None
         
 

@@ -2,6 +2,10 @@ app
 ============
 
 Simple web service providing a word embedding API. The methods are based on Gensim Word2Vec implementation. Models are passed as parameters and must be in the Word2Vec text or binary format. Updated to run on Python 3.
+
+# Resources
+- [Joey's Notion Article](https://www.notion.so/gember/Deploying-conda-environments-in-Docker-containers-how-to-do-it-right-Uwe-s-Blog-6709ea7cd2b14756bb7597a4ed70bb34#d72953bfddab4e5c86ac4de53bf4abbd)
+
 # Install Dependencies 
 ## Using conda 
 ```
@@ -83,54 +87,148 @@ See a how to [here](https://evancalz.medium.com/deploying-your-flask-app-to-hero
 
 ## Helpful Scripts
 
-See scripts in ./shell_scripts_devops/*.sh
+See scripts in `./shell_scripts_devops/*.sh`
 
+To rebuild the docker image and push it to heroku, run `push_heroku.sh`
 
+Alternatively, the old method that builds the container and then runs it locally is below:
+
+NOTE: We use the predict-environment.yml file to remove packages from the full environment.yml that are only needed for development and not production. [Linked](https://www.notion.so/gember/Deploying-conda-environments-in-Docker-containers-how-to-do-it-right-Uwe-s-Blog-6709ea7cd2b14756bb7597a4ed70bb34?pvs=4#8d6afb50984347f0911c899a563ccb07)
+
+NOTE on conda-lock: Then, with predict-environment.yml created, instead of using that as an input for the container build, we are using conda-lock on the predict-environment.yml file to render the requirements into locked pinnings for different architectures. This enables us to have a consistent environment to make developer as well as production environments reproducible. Another benefit of using conda-lock is that you can generate the lockfile for any platform from any other platform. This means we can develop on macOS and have production systems on Linux but still generate the lockfiles for all of them on either systems.
 
 ``` shell
-conda activate vegi-esc-api
+conda activate esc-llm  # * i have cloned a backup named esc-llm-backup-2023-07-08
 conda env export --from-history > environment.yml
+cp environment.yml predict-environment.yml
 
+# conda-lock -f predict-environment.yml -f pot-environment.yml -p osx-64 -k explicit --filename-template "predict-{platform}.lock"
 conda-lock -f predict-environment.yml -f pot-environment.yml -p linux-64 -k explicit --filename-template "predict-{platform}.lock"
 
-docker system prune -f & zsh ./shell_scripts_devops/makeRun.sh # ~ see https://docs.docker.com/engine/reference/commandline/buildx_build/
+docker system prune -f
+
+zsh ./shell_scripts_devops/makeRun.sh # ~ see https://docs.docker.com/engine/reference/commandline/buildx_build/
 # or manually run:
 # make distroless-buildkit
 # imageName="vegi_esc_server_distroless-buildkit"
 # docker run --platform linux/amd64 -it -p 2001:5002 $imageName
 # open localhost:2001/success/fenton
 
-! if see: no space left on device error, then run: `docker system prune`
+# ! For errors: "no space left on device" error, then run: `docker system prune`
 
 
+```
+
+*The docker build command takes about 13 mins to run on localhost.*
+
+It is run within the makeRun.sh script called above
+
+*NOTE: Our `setup.py` file that is called to install a module into `/pkg` in the `dockerfile` has the package named to `vegi-esc-api` using the `name="vegi_esc_api"` field in `setup()` in the `setup.py` file. Note how '_' are replaced with '-'. So this `vegi-esc-api` will precede module names for relative imports and calling the app module from gunicorn command*
+
+# Running the container locally
+
+### Run a shell to inspect the target container:
+```sh
+cd ./vegi-esc-api
+dockerFileExt=distroless-buildkit
+imageName=vegi_esc_server_$dockerFileExt
+condaVenvName=esc-llm
+dockerFileName=docker/Dockerfile.$dockerFileExt
+herokuWebAppName=vegi-esc-server
+docker run \                    
+    --env DATABASE_HOST=host.docker.internal \
+    --env-file ./.env \
+    --platform linux/amd64 \
+    -p 2001:5001 \
+    -it --entrypoint=sh \
+    $imageName
+```
+### Run the default entrypoint on target container:
+```sh
+cd ./vegi-esc-api
+dockerFileExt=distroless-buildkit
+imageName=vegi-esc-server-$dockerFileExt
+condaVenvName=esc-llm
+dockerFileName=docker/Dockerfile.$dockerFileExt
+herokuWebAppName=vegi-esc-server
+docker run \                    
+    --env DATABASE_HOST=host.docker.internal \
+    --env-file ./.env \
+    --platform linux/amd64 \
+    -p 2001:5001 \
+    -it \
+    $imageName
 ```
 
 
 ### Dash Endpoints:
 
 - http://localhost:5002/dashboard/ or http://127.0.0.1:5002/dashboard/ and http://127.0.0.1:5002/ to login with username and pass defined in .env. The dashboard is where the code is defined in layouts for dash apps.
-### All other Endpoints defined in `app.py` with port `2001` for when in docker image, and `5002` when running without docker
-### Localhost Port
+- http://127.0.0.1:5001/login/?next=%2Fdashboard%2F
+
+*All other Endpoints defined in `app.py` with port `2001` for when in docker image, and `5002` or `5001` when running without docker*
+## Localhost EndPoints
+### Connection status
 - http://localhost:5002/success/fenton
+### LLM Admin
 - http://127.0.0.1:5002/reset-llm-db?reinit=True
-- http://127.0.0.1:5002/llm/view-vector-store-documents
+### LLM Queries
 - http://127.0.0.1:5002/llm/view-vector-store
-- http://127.0.0.1:5002/llm/query-vector-store?query=hummous
+- http://127.0.0.1:5002/llm/view-vector-store-documents
 - http://127.0.0.1:5002/llm/query-vector-store?query=Hummous
+### ESC Endpoints
+- http://127.0.0.1:5002/vegi-users -> Success
+- http://127.0.0.1:5002/rate-vegi-product/2 -> Success
+- http://127.0.0.1:5002/rate-latest?n=1 -> 
+### ESC DB Admin Endpoints
+- POST http://127.0.0.1:5002/products/add
+- POST http://127.0.0.1:5002/explanations/add
+### ESC Sources Endpoints
+- http://127.0.0.1:5002/sustained/refresh
+- http://127.0.0.1:5002/
+
+### Deprecated word2vec specific end points...
 - http://127.0.0.1:5002/n_similarity?ws1=Sushi&ws1=Shop&ws2=Japanese&ws2=Restaurant -> { Success: 0.7014271020889282 }
 - http://127.0.0.1:5002/similarity?w1=Sushi&w2=Japanese -> { Success: 0.3347574472427368 }
-- http://localhost:2001/similarity?w1=bike&w2=car -> { Success: 0.7764649391174316 } 
+- http://localhost:5002/similarity?w1=bike&w2=car -> { Success: 0.7764649391174316 } 
 - http://127.0.0.1:5002/most_similar?positive=indian&positive=food[&negative=][&topn=] -> Internal Server Error!
-- http://127.0.0.1:5002/model?word=restaurant -> { Success: AAAYvgAA/r0AACk9AABWPgAA+b0AAFc+AABjvQAAVb0AAGs+AAClPQAA8D0AAFQ8AAA9PgAAs74AADu9AAC1PQAAqb0AAFs8AACXPQAAmL0AAEo+AAAxvgAAqjwAABm+AABvvAAA8r0AAJc9AAAuPgAAtT4AAO89AAAqvgAAer4AAKE9AAA+PgAAM74AALC9AAD6PgAAHz0AAAy+AADhvQAALr4AAGq9AACwPQAApj4AAL+9AABsvgAA1b4AAGm7AABNPQAAcj4AAKM8AAA+PgAAnj0AAFy+AADcvQAAlrwAAF0+AACxPQAA9L0AACu+AAAFvgAAED0AAG6+AABevgAADD4AAGs9AAAvPQAAUr4AAIU+AABEvgAAsD0AAAI+AAAMPQAAiL0AAOK+AADgvQAA474AAFo+AAA3OwAAh74AAAo+AACZvgAAQr4AANM9AACuvgAA1jwAAKy+AACrPgAAlD0AAK6+AAAcvQAAn74AAIe+AAAJvQAAOb4AAAS+AAAOvgAACb4AABc+AADuvQAAn74AADS+AABdPgAAJDwAAHY+AABgvgAAwD0AACy+AAC4vAAAAL4AAGO+AAAjPQAAjb0AAJ6+AAAwPgAAX74AALM9AADXvQAAPr4AAJC9AABLvgAAyb0AABe9AACaPQAAVj0AADw9AACuvAAAeDwAAAM9AAAzPQAAvD0AAKW9AACCPgAAET4AAIu9AACMPQAApT0AAI29AADfPQAABT4AAD2+AAD+vQAAPL4AAEK9AAC0PAAApb0AAFu+AAArPgAAWL4AAGY+AAAlPgAAuD4AAHA9AAC3PQAA7jwAAJk7AAAZPQAAeD0AAAW+AACuvQAAab4AAEc+AADxuwAAiL0AAJu9AAAEvgAAOr4AADC9AADWPQAAaL4AAGa+AACtvQAAiD0AAHG+AABJvgAASj4AAIo+AACQPgAAgT4AAAk+AADSvQAAyz0AAB49AACQvgAA+D0AAPq9AAAOvQAA1j4AAKe9AACwvgAADj0AAEM+AABuvQAAPT4AAMy9AAAwPgAAkD0AAKC7AAA8PAAANb0AAIW+AABFPgAAtDoAADs7AADkvAAAW74AANs9AAA+PgAAkzwAAN47AACRvQAAwz0AAC49AAAiPgAA570AAHE+AAD3vQAAvjwAACG+AAA0PQAAFT4AAKU9AACUvQAAwLwAADo+AAAgPgAAM74AAHo+AABVvgAArLwAACM+AAA4vgAA0b4AAHY+AABTPgAAZr4AAJo+AADiPQAAPb4AAKs9AAB4PgAA8b0AADA+AACmvAAAKr0AAI2+AACxPgAApL0AADc+AAC+PQAAGb0AACM+AAB0PgAAQr4AANW9AACQvgAAgz0AAD29AAB5vgAARD0AAJa9AADlOwAArTwAAMY9AACcPQAAKz0AAHu+AABnvgAAsb0AAAA8AAB3vQAAAb0AAJe+AAAePQAADz0AAGc8AAD7vQAAEr4AAEs+AADyvgAAq7wAAAk+AAAfvgAAYD4AAEW+AAAZvQAAO74AAHI+AAAivgAA7D4AAOQ8AABuPQAAVDwAAPc+AADEPgAAyr0AAHY9AADCvQAADT4AAOo9 }
-- http://127.0.0.1:5002/model_word_set -> Internal Server Error!
-- http://127.0.0.1:2001/nearest-word-in-model?w1=bike
 
-### Docker Port
+## Docker End Points
 - http://127.0.0.1:2001/success/fenton
 - http://127.0.0.1:2001/llm/view-vector-store -> 
 - http://127.0.0.1:2001/vegi-users -> Success
-- http://127.0.0.1:2001/sentence_similarity?s1=Chocolate%20cake&s2=Bakery -> Success: 0.7233545909583172 using full googlenews model
 - http://127.0.0.1:2001/rate-vegi-product/2 -> Success
 - http://127.0.0.1:2001/rate-latest?n=1 -> 
 - http://127.0.0.1:2001/llm/view-vector-store-documents -> 
 - http://127.0.0.1:2001/llm/query-vector-store?query=hummous -> 
+- http://127.0.0.1:2001/sentence_similarity?s1=Chocolate%20cake&s2=Bakery -> Success: 0.7233545909583172 using full googlenews model
+
+# Docker Image IP & Container Port
+First get the name of the docker image using Docker Desktop i.e. tender_fermat below
+```shell
+docker inspect \
+  -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' tender_fermat
+```
+which outputs: `172.17.0.2`
+then call: http://172.17.0.2:5002/success/fenton
+
+or
+First get the container ID:
+```shell
+docker ps
+```
+```shell
+docker inspect <container ID>
+```
+```shell
+docker inspect <container id> | grep "IPAddress"
+```
+
+# Code Documentation (vegi-esc-api)
+
+Start by reviewing the api endpoints in `vegi-esc-api/src/vegi_esc_api/app.py`.
+
+
+<!-- Originally referenced from [here](https://github.com/3Top/word2vec-api.git) -->
+
+

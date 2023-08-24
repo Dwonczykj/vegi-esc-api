@@ -28,9 +28,9 @@ import sqlite3
 import pymysql
 import os
 from typing import Callable, TypeVar, Generic, Any
-from functools import wraps
+from functools import wraps, cache
 from vegi_esc_api.logger import info, LOG_LEVEL, warn, error
-import vegi_esc_api.logger as logger
+import vegi_esc_api.logger as Logger
 from vegi_esc_api.select_vendor_products_with_esc import select_products_sql
 
 

@@ -7,7 +7,7 @@ from vegi_esc_api.vegi_repo_models import (
     VEGI_DB_NAMED_BIND,
 )
 from sqlalchemy.orm import scoped_session, sessionmaker
-import vegi_esc_api.logger as logger
+import vegi_esc_api.logger as Logger
 from dotenv import load_dotenv
 from flask import Flask
 from flask.helpers import get_root_path
@@ -139,15 +139,15 @@ def register_extensions(server: Flask):
     from vegi_esc_api.extensions import migrate
     from vegi_esc_api.extensions import login
 
-    logger.verbose("Registering flask dbs to flask app instance...")
+    Logger.verbose("Registering flask dbs to flask app instance...")
     db.init_app(server)
     # # Create the scoped session
     # session = scoped_session(sessionmaker(bind=db.get_engine(VEGI_DB_NAMED_BIND)))  # Replace with your named bind key
-    logger.verbose("  -  ✅ Registered flask dbs")
+    Logger.verbose("  -  ✅ Registered flask dbs")
     migrate.init_app(server, db)
-    logger.verbose("  -  ✅ Migration initialised for flask dbs")
+    Logger.verbose("  -  ✅ Migration initialised for flask dbs")
     login.init_app(server)
-    logger.verbose("  -  ✅ Login for Flask App initialised")
+    Logger.verbose("  -  ✅ Login for Flask App initialised")
     login.login_view = "main.login"  # type: ignore
     return (
         db,

@@ -32,6 +32,18 @@ global LOG_LEVEL
 LOG_LEVEL: int = 5
 
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 class LogLevel(Enum):
     off = 0
     error = 1
@@ -46,7 +58,7 @@ def set_log_level(level: LogLevel):
     return LOG_LEVEL
 
 
-PrintTypeLiteral = Literal["sys", "ic", "display", "print", "html_print"]
+PrintTypeLiteral = Literal["sys", "ic", "display", "print", "pprint", "html_print"]
 
 
 def timeis(func: Callable):
@@ -120,7 +132,7 @@ def format_exception(type: Type[BaseException] | None, value: BaseException | No
     return ''.join(traceback.format_exception(type, value, tb, length))
 
 
-def format_full_stacktrace(log_level: Literal[0, 1, 2, 3, 4, 5]):
+def format_full_stacktrace(log_level: Literal[0, 1, 2, 3, 4, 5], limit_stack_length: int = 3):
     '''
     ~ https://stackoverflow.com/a/32999522
     '''
@@ -133,12 +145,14 @@ def format_full_stacktrace(log_level: Literal[0, 1, 2, 3, 4, 5]):
     # print(os.path.abspath(__package__))
     # print(os.path.realpath(__package__))
     # print(__loader__)
+    # print(f"{bcolors.WARNING}Warnisng: No active frommets remain. Continue?{bcolors.ENDC}")
+    # pprint(f"{bcolors.WARNING}Warning: No active frommets remain. Continue?{bcolors.ENDC}")
     src_path_descriptor = os.path.relpath(os.path.dirname(__file__))
     stackTraceFrames = [SF for SF in traceback.extract_stack(f=None, limit=None) if src_path_descriptor in SF.filename and '/Users/joey/.vscode/extensions' not in SF.filename and not SF.filename.endswith('logger.py')]
     if log_level <= LogLevel.warn.value:
         stackTraceStrList = pformat(traceback.format_list(stackTraceFrames))
     else:
-        stackTraceStrList = pformat(traceback.format_list(stackTraceFrames[:-2]))
+        stackTraceStrList = pformat(traceback.format_list(stackTraceFrames[:-1 * abs(limit_stack_length)]))
     return stackTraceStrList
 
 
@@ -146,7 +160,7 @@ def log_return_with(
     val: Any,
     log_level: Literal[0, 1, 2, 3, 4, 5] = LogLevel.verbose.value,
     string_color: str = Fore.BLACK,
-    printer: PrintTypeLiteral = "display",
+    printer: PrintTypeLiteral = "print",
     stackTrace: list[str] | None = None,
 ):
     if log_level <= LogLevel.error.value:
@@ -166,7 +180,13 @@ def log_return_with(
             return pprint(v, indent=2)
         c = pprint
     elif printer == "print":
-        c = print
+        def _printer(*val: Any):
+            return print(*(f'{bcolors.WARNING}{v}{bcolors.ENDC}' for v in val))
+        c = _printer
+    elif printer == "pprint":
+        def _pprinter(*val: Any):
+            return print(pformat(*val))
+        c = _pprinter
     elif only_pprint:
         if printer == "ic":
             c = ic
@@ -178,10 +198,16 @@ def log_return_with(
         # stackTraceList = [text for (filename, line_number, function_name, text) in traceback.extract_stack(f=None, limit=None) if '/Users/joey/.vscode/extensions' not in filename]
         # stackTrace = str(traceback.extract_stack(f=None, limit=None))
         # stackTrace = str(pformat('\n\t'.join(format_full_stacktrace(log_level=log_level))))
-        stackTrace = format_full_stacktrace(log_level=log_level)
+        stackTrace = format_full_stacktrace(log_level=log_level, limit_stack_length=4)
 
     if log_level <= LOG_LEVEL:
         try:
+            if printer != print:
+                string_color = ''
+                stacktrace_color = ''
+            else:
+                stacktrace_color = bcolors.WARNING
+                
             if (
                 hasattr(val, "to_html")
                 and string_color != Fore.BLACK
@@ -191,19 +217,18 @@ def log_return_with(
                     f'<span style="color:{string_color.lower()}">{val.to_html()}</span>'
                 )
             elif isinstance(val, str):
-                c(string_color + val + Style.RESET_ALL)
-                c(Fore.YELLOW + 'StackTrace: ' + Style.RESET_ALL)
-                print(stackTrace)
+                c(f'{string_color}{val}{Style.RESET_ALL}')
+                c(f'{stacktrace_color}StackTrace:\n\t{stackTrace}{Style.RESET_ALL}')
+                # print(stackTrace)
             else:
-                c(string_color + str(val) + Style.RESET_ALL)
-                c(Fore.YELLOW + 'StackTrace: ' + Style.RESET_ALL)
-                # c(Fore.YELLOW + stackTrace + Style.RESET_ALL)
-                print(stackTrace)
+                c(f'{string_color}{val}{Style.RESET_ALL}')
+                c(f'{stacktrace_color}StackTrace:\n\t{stackTrace}{Style.RESET_ALL}')
+                # print(stackTrace)
         except Exception as e:
-            print(Fore.YELLOW + 'StackTrace: ' + Style.RESET_ALL)
+            print(Fore.RED + 'StackTrace: ' + Style.RESET_ALL)
             print(stackTrace)
             print(e)
-            c(val + Style.RESET_ALL)
+            print(val + Style.RESET_ALL)
     return val
 
 
@@ -215,7 +240,7 @@ def log_with(
     val: Any,
     log_level: Literal[0, 1, 2, 3, 4, 5] = LogLevel.verbose.value,
     string_color: str = Fore.BLACK,
-    printer: PrintTypeLiteral = "display",
+    printer: PrintTypeLiteral = "print",
 ):
     log_return_with(val, log_level, string_color, printer)
 
@@ -224,11 +249,11 @@ def error(val: Any):
     print(val)
     exc = sys.exception()
     print("*** print_tb:")
-    traceback.print_tb(exc.__traceback__, limit=1, file=sys.stdout)
+    traceback.print_tb(exc.__traceback__, limit=3, file=sys.stdout)
     print("*** print_exception:")
-    traceback.print_exception(exc, limit=2, file=sys.stdout)
+    traceback.print_exception(exc, limit=3, file=sys.stdout)
     print("*** print_exc:")
-    traceback.print_exc(limit=2, file=sys.stdout)
+    traceback.print_exc(limit=3, file=sys.stdout)
     print("*** format_exc, first and last line:")
     formatted_lines = traceback.format_exc().splitlines()
     print(formatted_lines[0])

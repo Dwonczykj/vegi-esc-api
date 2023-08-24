@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Self, Final
+from typing import Any, Optional, Self, Final, Union
 from datetime import datetime, timedelta
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -167,6 +167,41 @@ class VegiESCRatingInstance(VegiESCRating, _DBDataClassJsonWrapped, _isDBInstanc
 
 
 @dataclass
+class VegiProductCategory:
+    name: str
+    vendor: Optional[int]
+    categoryGroup: Optional[int]
+
+
+@dataclass
+class VegiProductCategoryCreate(VegiProductCategory, _DBDataClassJsonWrapped, _isCreate):
+    def __init__(
+        self,
+        name: str,
+        vendor: Optional[int],
+        categoryGroup: Optional[int],
+    ):
+        self.name = name
+        self.vendor = vendor
+        self.categoryGroup = categoryGroup
+
+
+@dataclass
+class VegiProductCategoryInstance(VegiProductCategory, _DBDataClassJsonWrapped, _isDBInstance):
+    def __init__(
+        self,
+        id: int,
+        name: str,
+        vendor: Optional[int],
+        categoryGroup: Optional[int],
+    ):
+        self.id = id
+        self.name = name
+        self.vendor = vendor
+        self.categoryGroup = categoryGroup
+
+
+@dataclass
 class VegiProduct:
     name: str
     description: str
@@ -174,7 +209,7 @@ class VegiProduct:
     isAvailable: bool
     isFeatured: bool
     status: str
-    ingredients: str
+    ingredients: Optional[str]
     stockCount: int
     supplier: str
     brandName: str
@@ -184,7 +219,7 @@ class VegiProduct:
     sizeInnerUnitType: str
     productBarCode: str
     vendor: int
-    category: int
+    category: Union[VegiProductCategoryInstance, int]
 
 
 @dataclass
@@ -197,7 +232,6 @@ class VegiProductCreate(VegiProduct, _DBDataClassJsonWrapped, _isCreate):
         isAvailable: bool,
         isFeatured: bool,
         status: str,
-        ingredients: str,
         stockCount: int,
         supplier: str,
         brandName: str,
@@ -207,7 +241,8 @@ class VegiProductCreate(VegiProduct, _DBDataClassJsonWrapped, _isCreate):
         sizeInnerUnitType: str,
         productBarCode: str,
         vendor: int,
-        category: int,
+        category: Union[VegiProductCategoryInstance, int],
+        ingredients: Optional[str] = ''
         # calculated_on: datetime,
     ):
         self.name = name
@@ -240,7 +275,6 @@ class VegiProductInstance(VegiProduct, _DBDataClassJsonWrapped, _isDBInstance):
         isAvailable: bool,
         isFeatured: bool,
         status: str,
-        ingredients: str,
         stockCount: int,
         supplier: str,
         brandName: str,
@@ -250,7 +284,8 @@ class VegiProductInstance(VegiProduct, _DBDataClassJsonWrapped, _isDBInstance):
         sizeInnerUnitType: str,
         productBarCode: str,
         vendor: int,
-        category: int,
+        category: Union[VegiProductCategoryInstance, int],
+        ingredients: Optional[str] = '',
         # calculated_on: datetime,
     ):
         self.id = id
@@ -271,43 +306,123 @@ class VegiProductInstance(VegiProduct, _DBDataClassJsonWrapped, _isDBInstance):
         self.productBarCode = productBarCode
         self.vendor = vendor
         self.category = category
-        
-        
+
+
 @dataclass
-class VegiProductCategory:
+class VegiVendor:
     name: str
-    vendor: int
-    categoryGroup: int
+    type: str
+    phoneNumber: str
+    costLevel: Optional[float]
+    rating: float
+    isVegan: bool
+    minimumOrderAmount: float
+    platformFee: float
+    '''the fee payed per order on vegi to shop at this vendor'''
+    status: str
+    walletAddress: str
+    description: str
+    imageUrl: str
+    pickupAddress: Any
+    '''Address of the vendor'''
+    products: Optional[list]
+    '''the list of products in the vendor's inventory'''
+    vendorCategories: Optional[list]
+    '''The categoric type of the vendor (i.e. a cafe).'''
+    productCategories: Optional[list]
+    '''vendor specific categories to assign each of their products into'''
 
 
 @dataclass
-class VegiProductCategoryCreate(VegiProductCategory, _DBDataClassJsonWrapped, _isCreate):
+class VegiVendorCreate(VegiVendor, _DBDataClassJsonWrapped, _isCreate):
     def __init__(
         self,
         name: str,
-        vendor: int,
-        categoryGroup: int,
+        type: str,
+        phoneNumber: str,
+        costLevel: Optional[float],
+        rating: float,
+        isVegan: bool,
+        minimumOrderAmount: float,
+        platformFee: float,
+        status: str,
+        walletAddress: str,
+        description: str,
+        imageUrl: str,
+        pickupAddress: Any,
+        products: Optional[list],
+        vendorCategories: Optional[list],
+        productCategories: Optional[list],
     ):
-        self.name = name
-        self.vendor = vendor
-        self.categoryGroup = categoryGroup
+        self.name: str = name
+        self.type: str = type
+        self.phoneNumber: str = phoneNumber
+        self.costLevel: Optional[float] = costLevel
+        self.rating: float = rating
+        self.isVegan: bool = isVegan
+        self.minimumOrderAmount: float = minimumOrderAmount
+        self.platformFee: float = platformFee
+        '''the fee payed per order on vegi to shop at this vendor'''
+        self.status: str = status
+        self.walletAddress: str = walletAddress
+        self.description: str = description
+        self.imageUrl: str = imageUrl
+        self.pickupAddress: Any = pickupAddress
+        '''Address of the vendor'''
+        self.products: Optional[list] = products
+        '''the list of products in the vendor's inventory'''
+        self.vendorCategories: Optional[list] = vendorCategories
+        '''The categoric type of the vendor (i.e. a cafe).'''
+        self.productCategories: Optional[list] = productCategories
+        '''vendor specific categories to assign each of their products into'''
 
 
 @dataclass
-class VegiProductCategoryInstance(VegiProductCategory, _DBDataClassJsonWrapped, _isDBInstance):
+class VegiVendorInstance(VegiVendor, _DBDataClassJsonWrapped, _isDBInstance):
     def __init__(
         self,
         id: int,
         name: str,
-        vendor: int,
-        categoryGroup: int,
+        type: str,
+        phoneNumber: str,
+        costLevel: Optional[float],
+        rating: float,
+        isVegan: bool,
+        minimumOrderAmount: float,
+        platformFee: float,
+        status: str,
+        walletAddress: str,
+        description: str,
+        imageUrl: str,
+        pickupAddress: Any,
+        products: Optional[list],
+        vendorCategories: Optional[list],
+        productCategories: Optional[list],
     ):
         self.id = id
-        self.name = name
-        self.vendor = vendor
-        self.categoryGroup = categoryGroup
-        
-        
+        self.name: str = name
+        self.type: str = type
+        self.phoneNumber: str = phoneNumber
+        self.costLevel: Optional[float] = costLevel
+        self.rating: float = rating
+        self.isVegan: bool = isVegan
+        self.minimumOrderAmount: float = minimumOrderAmount
+        self.platformFee: float = platformFee
+        '''the fee payed per order on vegi to shop at this vendor'''
+        self.status: str = status
+        self.walletAddress: str = walletAddress
+        self.description: str = description
+        self.imageUrl: str = imageUrl
+        self.pickupAddress: Any = pickupAddress
+        '''Address of the vendor'''
+        self.products: Optional[list] = products
+        '''the list of products in the vendor's inventory'''
+        self.vendorCategories: Optional[list] = vendorCategories
+        '''The categoric type of the vendor (i.e. a cafe).'''
+        self.productCategories: Optional[list] = productCategories
+        '''vendor specific categories to assign each of their products into'''
+
+
 @dataclass
 class VegiCategoryGroup:
     name: str
@@ -484,7 +599,7 @@ class ESCProduct:
     category: str
     keyWords: list[str]
     imageUrl: str
-    ingredients: str
+    ingredients: Optional[str]
     packagingType: str
     stockUnitsPerProduct: int
     sizeInnerUnitValue: float
@@ -508,7 +623,7 @@ class ESCProductCreate(ESCProduct, _DBDataClassJsonWrapped, _isCreate):
         category: str,
         keyWords: list[str],
         imageUrl: str,
-        ingredients: str,
+        ingredients: Optional[str],
         packagingType: str,
         stockUnitsPerProduct: int,
         sizeInnerUnitValue: float,
@@ -552,7 +667,7 @@ class ESCProductInstance(ESCProduct, _DBDataClassJsonWrapped, _isDBInstance):
         category: str,
         keyWords: list[str],
         imageUrl: str,
-        ingredients: str,
+        ingredients: Optional[str],
         packagingType: str,
         stockUnitsPerProduct: int,
         sizeInnerUnitValue: float,

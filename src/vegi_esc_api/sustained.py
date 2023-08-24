@@ -4,9 +4,9 @@ from __future__ import annotations
 from flask import Flask
 import requests
 import cachetools.func
-from vegi_esc_api.create_app import create_app
+# from vegi_esc_api.create_app import create_app
 import jsons
-import vegi_esc_api.logger as logger
+import vegi_esc_api.logger as Logger
 from vegi_esc_api.helpers import parse_measurement
 from vegi_esc_api.models import ESCProductInstance
 from vegi_esc_api.models_wrapper import CachedSustainedItemCategory
@@ -242,7 +242,7 @@ class SustainedAPI:
                 products = self._fetchProductsForCategory(category=cat)
                 return {"categories": [cat], "products": products}
             else:
-                logger.warn(
+                Logger.warn(
                     f'No matching sustained category found for "{category_name}"'
                 )
                 return {"categories": categories, "products": []}
@@ -367,11 +367,3 @@ class SustainedAPI:
         categories = self._fetchCategories()
         return [c.name for c in categories]
 
-
-if __name__ == "__main__":
-    # check functions work
-    app, vegi_db_session = create_app(None)
-    ss = SustainedAPI(app=app)
-    yoghurts = ss.get_products(category_name="yoghurts")
-    print(yoghurts)
-    exit(0)

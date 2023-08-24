@@ -23,6 +23,10 @@ var/
 *.egg
 
 .env
+.env_test
+.env_docker
+
+*.pk
 
 localstorage
 backup_localstorage

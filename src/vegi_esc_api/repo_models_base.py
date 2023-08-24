@@ -6,7 +6,7 @@ from copy import copy, deepcopy
 from typing import Any, Self
 from typing import Callable, Protocol
 from typing import TypeVar, cast
-import vegi_esc_api.logger as logger
+import vegi_esc_api.logger as Logger
 
 
 class _DBFetchable():
@@ -82,15 +82,15 @@ class VegiRepoProtocol(Protocol):
 # ~ https://www.notion.so/gember/Python-Cheats-8d7b0cc6f58544ef888ea36bb5879141?pvs=4#94e922507b5a426a804ea7d75574fc11
 def appcontext(f: F, *args: Any, **kwargs: Any) -> F:
     if args:
-        logger.warn(f'Unknown args for appcontext decorator: {args}')
+        Logger.warn(f'Unknown args for appcontext decorator: {args}')
     if kwargs:
-        logger.warn(f'Unknown kwargs for appcontext decorator: {kwargs}')
+        Logger.warn(f'Unknown kwargs for appcontext decorator: {kwargs}')
     
     def deco(self: VegiRepoProtocol, *args: Any, **kwargs: Any):
         with self.app.app_context():
             try:
                 return f(self, *args, **kwargs)
             except Exception as e:
-                logger.error(str(e))
+                Logger.error(str(e))
                 return []
     return cast(F, deco)

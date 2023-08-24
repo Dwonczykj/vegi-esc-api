@@ -37,6 +37,7 @@ dependencies:
   - paramiko
   - pandas
   - pyyaml
+  - pytest
   - flask-sqlalchemy
   - gensim
   - setuptools_scm
@@ -49,4 +50,5 @@ dependencies:
   - tiktoken
   - ftfy
   - unidecode
+  - scipy
 prefix: /opt/homebrew/Caskroom/miniconda/base/envs/esc-llm

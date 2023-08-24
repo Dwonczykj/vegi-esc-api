@@ -28,7 +28,7 @@ from vegi_esc_api.models import (
     # VegiESCExplanationInstance,
 )
 from vegi_esc_api.extensions import db
-import vegi_esc_api.logger as logger
+import vegi_esc_api.logger as Logger
 
 
 # @dataclass
@@ -55,7 +55,7 @@ class VegiRepo:
         VegiRepo.db_session = scoped_session(
             sessionmaker(bind=db.get_engine(VEGI_DB_NAMED_BIND))
         )
-        logger.verbose(f'{type(self).__name__} DB Session connection: {type(self).db_session} using named bind: "{VEGI_DB_NAMED_BIND}"')
+        Logger.verbose(f'{type(self).__name__} DB Session connection: {type(self).db_session} using named bind: "{VEGI_DB_NAMED_BIND}"')
 
     @appcontext
     def get_users(self):
@@ -117,9 +117,9 @@ class VegiRepo:
                 .filter(VegiProductSql.id == product_id)
                 .first()
             )
-            logger.info(dataProduct)
+            Logger.info(dataProduct)
             if dataProduct is None:
-                logger.error(
+                Logger.error(
                     f'Unable to locate product in vegi db with id: "{id}" for vegi_repo.get_product_category_details'
                 )
                 return (None, None, None)
@@ -141,7 +141,7 @@ class VegiRepo:
                 # dataProductsInSameCategory[0]['VegiProductCategorySql'].fetch() if 'VegiProductCategorySql' in dataProductsInSameCategory[0] else None,  # type: ignore
             )
         except Exception as e:
-            logger.error(e)
+            Logger.error(e)
             return (None, None, None)
 
     # @appcontext
@@ -234,7 +234,7 @@ class VegiRepo:
         # NOTE This function uses .with_entities() to only select the id column from the products table
         # NOTE we need the .with_entities() call so that distinct() only opereates on these entities and not the whole row result
         # Query the joined data
-        logger.warn(f'"{VegiRepo.db_session.bind.url}"')
+        Logger.warn(f'"{VegiRepo.db_session.bind.url}"')
         # in this query below, we need .with_entities() to use the distinct clause
         data = (
             VegiRepo.db_session.query(

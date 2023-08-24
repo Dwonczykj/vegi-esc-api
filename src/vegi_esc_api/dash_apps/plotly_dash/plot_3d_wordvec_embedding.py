@@ -2,8 +2,9 @@
 from flask import Flask
 from vegi_esc_api.sustained import SustainedAPI
 from vegi_esc_api.word_vec_model import Word_Vec_Model
-import vegi_esc_api.logger as logger
-import cachetools.func
+from vegi_esc_api.llm_model import LLM
+import vegi_esc_api.logger as Logger
+# import cachetools.func
 import re
 import pickle
 from dash import html, dash_table, dcc, Output, Input, Dash, State, callback
@@ -21,8 +22,6 @@ import pandas as pd
 # URL_RULE = "/custom-app"
 # # dash internal route prefix, must be start and end with "/"
 # URL_BASE_PATHNAME = "/dash/custom-app/"
-
-model = Word_Vec_Model.getModel(app=None).model
 
 
 # @cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)
@@ -53,14 +52,15 @@ def get_word_vectors(
         word_vectors = np.array([model[w] for w in words])
         return word_vectors
     else:
-        with open('tfidf_vectorizer.pk', 'wb') as fin:
+        with open("tfidf_vectorizer.pk", "wb") as fin:
             tfidf_vectorizer = pickle.load(fin)
         tfidf_weighted_phrase_vects = [
             (
                 (1 / tfidf_vectorizer.transform([phrase])[0].T.todense())
-                * np.sum([w for w in re.split(r'\s', phrase)])
+                * np.sum([w for w in re.split(r"\s", phrase)])
             )
-            for phrase in words]
+            for phrase in words
+        ]
         phrase_vectors = tfidf_weighted_phrase_vects
         return phrase_vectors
 
@@ -68,7 +68,7 @@ def get_word_vectors(
 def display_scatterplot_3D(
     model,
     user_input=None,
-    words=None,
+    words=[],
     label=None,
     color_map=None,
     annotation="On",
@@ -107,7 +107,7 @@ def display_scatterplot_3D(
         showscale=False,
     )
 
-    data = [quiver]
+    data: list[go.Cone | go.Scatter3d] = [quiver]
 
     count = 0
     for i in range(len(user_input)):
@@ -185,7 +185,7 @@ def display_scatterplot_3D(
 def display_scatterplot_2D(
     model,
     user_input=None,
-    words=None,
+    words=[],
     label=None,
     color_map=None,
     annotation="On",
@@ -363,21 +363,32 @@ def update_figure(
 
         for words in user_input:
             if not view_to_similar_words:
-                sim_words = model.most_similar(words, topn=top_n)
+                sim_words = model.most_similar(words, top_n=top_n)
                 sim_words = append_list(sim_words, words)
             else:
                 sim_words = []
                 vocab = model.key_to_index.keys()
                 if all((phrase in vocab for phrase in view_to_similar_words)):
                     for measure_similarity_to_word in view_to_similar_words:
-                        _similarity = model.similarity(words, measure_similarity_to_word)
-                        sim_words.append((measure_similarity_to_word, _similarity, words))
+                        _similarity = model.similarity(
+                            words, measure_similarity_to_word
+                        )
+                        sim_words.append(
+                            (measure_similarity_to_word, _similarity, words)
+                        )
                     sim_words.sort(key=lambda t: t[1])
                 else:
                     for measure_similarity_to_word in view_to_similar_words:
-                        _similarity = model.wmdistance(words, measure_similarity_to_word)
+                        # _similarity = model.wmdistance(
+                        #     words, measure_similarity_to_word
+                        # )
+                        _similarity = model.distance(
+                            words, measure_similarity_to_word
+                        )[words]
                         # sim_words.append((measure_similarity_to_word, _similarity, words))
-                        sim_words.append((measure_similarity_to_word, 1.0 / _similarity, words))
+                        sim_words.append(
+                            (measure_similarity_to_word, 1.0 / _similarity, words)
+                        )
                     # sim_words.sort(key=lambda t: t[1], reverse=True)
                     sim_words.sort(key=lambda t: t[1])
                 sim_words = sim_words[:top_n]
@@ -451,63 +462,78 @@ def get_data(app: Flask):
     ss = SustainedAPI(app=app)
     categories = ss.get_categories()
     categories = [c.name for c in categories]
-    return {
-        'categories': categories
-    }
+    return {"categories": categories}
 
 
-layout = html.Div([
-    dcc.Input(id="input-1", type="text", value="Montréal"),
-    dcc.Input(id="input-2", type="text", value="Canada"),
-    html.Div(id="number-output"),
-    html.Div(className='row', children=[
-            html.Div(className='six columns', children=[
-                dash_table.DataTable(data=df.to_dict('records'), page_size=11, style_table={'overflowX': 'auto'})
-            ]),
-            html.Div(className='six columns', children=[
-                dcc.Graph(figure={}, id='histo-chart-final')
-            ])
-    ]),
-    html.Hr(),
-    html.H1(children="My First App with Data and a Graph"),
-    html.Div(
-        children="Type the word that you want to investigate. You can type more than one word by separating one word with other with comma (,)"
-    ),
-    html.Label("User Input"),
-    dcc.Input(id="input-3", type="text", value="Pasta"),
-    html.Button(id="update-user-input-button", n_clicks=0, children="Run"),
-    html.Br(),
-    html.Label("Dimensions"),
-    dcc.RadioItems(["2D", "3D"], "3D", id="radio-dimensions"),
-    html.Label("Use Food Categories"),
-    dcc.RadioItems(["Any", "Categories"], "Any", id="word-dict"),
-    html.Label("Dimensionality Reduction Technique"),
-    dcc.RadioItems(["TSNE", "PCA"], "TSNE", id="radio-dim-reduction"),
-    html.Br(),
-    html.Label("Number of Similar words"),
-    dcc.Slider(
-        id="num-similar-words",
-        min=0,
-        max=100,
-        marks={i: f"{i} words" for i in [j * 5 for j in range(0, 21)]},
-        value=10,
-    ),
-    html.Br(),
-    html.H2(id="fig-header"),
-    html.Div(className='row', children=[
-            # html.Div(className='six columns', children=[
-            #     dash_table.DataTable(data=df.to_dict('records'), page_size=11, style_table={'overflowX': 'auto'})
-            # ]),
-            html.Div(children=[
-                dcc.Graph(figure={}, id='word-vec-fig')
-            ])
-    ]),
-])
+layout = html.Div(
+    [
+        dcc.Input(id="input-1", type="text", value="Montréal"),
+        dcc.Input(id="input-2", type="text", value="Canada"),
+        html.Div(id="number-output"),
+        html.Div(
+            className="row",
+            children=[
+                html.Div(
+                    className="six columns",
+                    children=[
+                        dash_table.DataTable(
+                            data=df.to_dict("records"),
+                            page_size=11,
+                            style_table={"overflowX": "auto"},
+                        )
+                    ],
+                ),
+                html.Div(
+                    className="six columns",
+                    children=[dcc.Graph(figure={}, id="histo-chart-final")],
+                ),
+            ],
+        ),
+        html.Hr(),
+        html.H1(children="My First App with Data and a Graph"),
+        html.Div(
+            children="Type the word that you want to investigate. You can type more than one word by separating one word with other with comma (,)"
+        ),
+        html.Label("User Input"),
+        dcc.Input(id="input-3", type="text", value="Pasta"),
+        html.Button(id="update-user-input-button", n_clicks=0, children="Run"),
+        html.Br(),
+        html.Label("Dimensions"),
+        dcc.RadioItems(["2D", "3D"], "3D", id="radio-dimensions"),
+        html.Label("Use Food Categories"),
+        dcc.RadioItems(["Any", "Categories"], "Any", id="word-dict"),
+        html.Label("Dimensionality Reduction Technique"),
+        dcc.RadioItems(["TSNE", "PCA"], "TSNE", id="radio-dim-reduction"),
+        html.Br(),
+        html.Label("Number of Similar words"),
+        dcc.Slider(
+            id="num-similar-words",
+            min=0,
+            max=100,
+            marks={i: f"{i} words" for i in [j * 5 for j in range(0, 21)]},
+            value=10,
+        ),
+        html.Br(),
+        html.H2(id="fig-header"),
+        html.Div(
+            className="row",
+            children=[
+                # html.Div(className='six columns', children=[
+                #     dash_table.DataTable(data=df.to_dict('records'), page_size=11, style_table={'overflowX': 'auto'})
+                # ]),
+                html.Div(children=[dcc.Graph(figure={}, id="word-vec-fig")])
+            ],
+        ),
+    ]
+)
 
 
 def register_callbacks(server: Flask, dashapp: Dash):
+    global model  # makes this global to this module
+    # model = Word_Vec_Model.getModel(app=server).model
+    model = LLM(app=server).model
     data = get_data(app=server)
-    categories = data['categories']
+    categories = data["categories"]
 
     @dashapp.callback(
         Output("histo-chart-final", "figure"),
@@ -515,12 +541,12 @@ def register_callbacks(server: Flask, dashapp: Dash):
         Input("input-2", "value"),
     )
     def update_figure_output(input1, input2):
-        print(u'Input 1 is "{}" and Input 2 is "{}"'.format(input1, input2))
+        print('Input 1 is "{}" and Input 2 is "{}"'.format(input1, input2))
         if len(input2) > len(input1):
-            fig = px.histogram(df, x='continent', y='lifeExp', histfunc='avg')
+            fig = px.histogram(df, x="continent", y="lifeExp", histfunc="avg")
             return fig
         else:
-            fig = px.histogram(df, x='continent', y='gdpPercap', histfunc='avg')
+            fig = px.histogram(df, x="continent", y="gdpPercap", histfunc="avg")
             return fig
 
     @dashapp.callback(
@@ -532,8 +558,16 @@ def register_callbacks(server: Flask, dashapp: Dash):
         Input("radio-dim-reduction", "value"),
     )
     def update_word_viz_output(input3, radioValue, top_n, word_type, dim_reduction):
-        print(u'Input 3 is "{}" and radio input value is "{}"'.format(input3, radioValue))
-        fig = update_figure(dimension=radioValue, dim_red=dim_reduction, user_input=input3, top_n=top_n, view_to_similar_words=(categories if word_type != 'Any' else []))
+        print(
+            'Input 3 is "{}" and radio input value is "{}"'.format(input3, radioValue)
+        )
+        fig = update_figure(
+            dimension=radioValue,
+            dim_red=dim_reduction,
+            user_input=input3,
+            top_n=top_n,
+            view_to_similar_words=(categories if word_type != "Any" else []),
+        )
         return fig
 
 
@@ -545,11 +579,7 @@ def register_callbacks(server: Flask, dashapp: Dash):
 # def update_output(input1, input2):
 #     return u'Input 1 is "{}" and Input 2 is "{}"'.format(input1, input2)
 
-
-
-
 # plot = {}
-
 
 
 # layout = html.Div(
@@ -605,7 +635,6 @@ def register_callbacks(server: Flask, dashapp: Dash):
 #         ])
 #     ]
 # )
-
 
 
 # @callback(
