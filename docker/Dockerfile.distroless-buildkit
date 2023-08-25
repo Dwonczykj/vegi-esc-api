@@ -18,6 +18,7 @@ RUN conda run -p /env python -m pip install --no-deps /pkg
 
 # Distroless for execution
 FROM gcr.io/distroless/base-debian11:debug-nonroot
+# FROM gcr.io/distroless/python3-debian11:debug-nonroot
 
 COPY --from=conda /env $HOME/env
 # COPY --from=conda /env /env
@@ -28,16 +29,20 @@ COPY --from=conda /env $HOME/env
 # COPY models/word2vec-google-news-300.vectors.npy /models
 # COPY /models /models
 COPY /entrypoint.sh /entrypoint.sh
+# RUN chmod +x /entrypoint.sh
 COPY /.chromadb /.chromadb
 # RUNS AGAIN WHEN ARG CHANGES VALUE: https://stackoverflow.com/a/58800289
 # ARG FOO=bar
 # RUN echo $HOME # ! wont run as no shell for distroless
 # RUN cp /.chromadb $HOME/.chromadb # ! wont run as no shell for distroless
 
-# CMD ["/entrypoint.sh"]
+CMD [ \
+  # "sh", "-c", \
+  "/entrypoint.sh" \
+  ]
 # CMD [ \
 #   "/env/bin/gunicorn", "--bind", "0.0.0.0:$PORT", "vegi_esc_api.app:gunicorn_app", "--timeout", "600" \
-# ]
+#   ]
 # CMD [ \
 #   # "/env/bin/gunicorn", "-b", "0.0.0.0:5002", "-k", "uvicorn.workers.UvicornWorker", "nyc_taxi_fare.serve:app" \
 #   # "/env/bin/gunicorn", "--bind", "0.0.0.0:$PORT", "vegi_esc_api.app:gunicorn_app\(verbose=True\)", "--timeout", "600" \
