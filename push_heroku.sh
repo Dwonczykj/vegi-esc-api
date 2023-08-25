@@ -88,6 +88,7 @@ tmpfile=$(mktemp)
 # Run the command, capture the output in the temporary file and also write to stdout
 # docker push registry.heroku.com/$herokuWebAppName/web | tee $tmpfile 
 
+# ~ https://devcenter.heroku.com/articles/container-registry-and-runtime#pushing-an-existing-image
 # ~ https://unix.stackexchange.com/a/526905
 # 2 refers to STDERR. 2>&1 will send STDERR to the same location as 1 (STDOUT).
 output=$( \
@@ -102,6 +103,13 @@ if grep -q "unauthorised" $output; then
     heroku login -i
     heroku container:login
 fi
+
+# ~ https://devcenter.heroku.com/articles/container-registry-and-runtime#releasing-an-image
+output=$( \
+    heroku container:release web --app $herokuWebAppName -v \
+    2>&1 | \
+    tee /dev/fd/2 \
+    )
 
 # Remove the temporary file
 rm $tmpfile

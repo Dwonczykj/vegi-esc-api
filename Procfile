@@ -1,1 +1,1 @@
-web: sh
+web: bash
