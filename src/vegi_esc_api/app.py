@@ -289,6 +289,28 @@ def rate_vegi_product(id: str):
     })
 
 
+@slow_call_timer
+@server.route("/rate-product-name")
+@cachetools.func.ttl_cache(maxsize=128, ttl=10 * 60)
+def rate_product_name():
+    # so that the module contains all the methods that we might want to call on the vec model.
+    name = str(request.args.get("name", default=''))
+    if not name:
+        return {}
+    
+    new_rating, most_similar_esc_product = _rate_product(
+        product_name=name,
+    )
+    if new_rating is None:
+        return {}
+
+    return ({
+        "product_name": name,
+        "most_similar_esc_product": most_similar_esc_product.serialize(),
+        "new_rating": new_rating.serialize(),
+    })
+
+
 def _rate_vegi_product(id: int):
     p_id = int(id)
     # repoConn = VegiRepo(app=server)
@@ -341,7 +363,7 @@ def _rate_product(
         ),
         explanationsCreate=[
             ESCExplanationCreate(
-                title=f"Proxy from similar product [{vegi_rated_most_sim_product._sustainedProduct.name}]: {e.title}",
+                title=f"Info from similar product [{vegi_rated_most_sim_product._sustainedProduct.name}]: {e.title}",
                 measure=e.measure,
                 reasons=e.reasons,
                 evidence=e.evidence,
@@ -889,7 +911,7 @@ if __name__ == "__main__":
 else:
     Logger.info(
         f'Thread name running app is "{__name__}"'
-    )  # Thread name running app is "app" if command run is `gunicorn --bind 127.0.0.1:5002 app:gunicorn_app --timeout 90`
+    )
     # runApp = initFlaskAppModel(app=server)
     
     # Gunicorn entry point generator

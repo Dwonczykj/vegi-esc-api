@@ -328,7 +328,7 @@ class SustainedAPI:
         product, esc_product = self._fetchProduct(id=sustainedProductId)
         assert (
             esc_product is not None
-        ), "esc_product cannot be None after being fetched in sustained.get_product_with_impact()"
+        ), f"esc_product cannot be None after being fetched in sustained.get_product_with_impact(sustainedProductId={sustainedProductId})"
         productExplained = self._fetchProductImpacts(
             product=product, esc_product=esc_product
         )

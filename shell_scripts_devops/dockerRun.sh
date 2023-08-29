@@ -4,10 +4,10 @@
 # makeName=miniconda
 makeName=distroless-buildkit
 imageName="vegi_esc_server_$makeName"
-open http://127.0.0.1:2001/success/fenton
-# make sure the port below matches the bound port in the docker file run CMD
 mapFromDockerImagePort=5002
 mapToHostPort=2001
+open http://127.0.0.1:$mapToHostPort/vegi-users
+# make sure the port below matches the bound port in the docker file run CMD
 # ~ https://docs.docker.com/engine/reference/commandline/run/#options
 # ~ https://docs.docker.com/engine/reference/commandline/run/#env
 # docker run -e MYVAR1 --env MYVAR2=foo --env-file ./env.list ubuntu bash

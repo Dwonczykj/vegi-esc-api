@@ -6,7 +6,8 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv()
 config = os.environ
 
-_defaultUri = f"postgresql://{config['DATABASE_ESC_USERNAME']}:{config['DATABASE_ESC_PASSWORD']}!@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_ESC_DBNAME']}"
+_defaultUri = config['DATABASE_URL']
+_defaultUri = f'{_defaultUri}'.replace('postgres://', 'postgresql://')  # f"postgresql://{config['DATABASE_ESC_USERNAME']}:{config['DATABASE_ESC_PASSWORD']}!@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_ESC_DBNAME']}"
 
 
 class Config(object):
